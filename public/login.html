@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | NPS Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonte Inter para tipografia moderna -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Efeito Glassmorphism */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+        }
+
+        /* Animação suave de entrada */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        
+        /* Background animado sutil */
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: pulse 10s infinite alternate;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 relative flex items-center justify-center min-h-screen overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+    <!-- Elementos de Fundo (Ambient Lighting) -->
+    <div class="blob bg-indigo-600 w-96 h-96 rounded-full top-0 left-0 -translate-x-1/2 -translate-y-1/2"></div>
+    <div class="blob bg-purple-600 w-96 h-96 rounded-full bottom-0 right-0 translate-x-1/3 translate-y-1/3 animation-delay-2000"></div>
+
+    <div class="glass-panel p-8 sm:p-10 rounded-2xl w-full max-w-md animate-fade-in relative z-10 mx-4">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 mb-4 border border-indigo-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h1 class="text-3xl font-bold text-white tracking-tight">NPS<span class="text-indigo-400">Manager</span></h1>
+            <p class="text-gray-400 mt-2 text-sm font-light">Entre com suas credenciais para gerenciar campanhas.</p>
+        </div>
+
+        <!-- Mensagem de Erro -->
+        <div id="error-msg" class="hidden bg-red-500/10 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm text-center flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span id="error-text"></span>
+        </div>
+
+        <form onsubmit="handleLogin(event)" class="space-y-5">
+            <div class="group">
+                <label class="block text-gray-400 text-xs font-semibold mb-1.5 ml-1 uppercase tracking-wider">Email Corporativo</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path></svg>
+                    </div>
+                    <input type="email" id="email" required placeholder="seunome@empresa.com" 
+                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-800/50 text-white border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-gray-600">
+                </div>
+            </div>
+
+            <div class="group">
+                <label class="block text-gray-400 text-xs font-semibold mb-1.5 ml-1 uppercase tracking-wider">Senha</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <input type="password" id="password" required placeholder="••••••••" 
+                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-800/50 text-white border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-gray-600">
+                </div>
+            </div>
+
+            <button type="submit" id="login-btn" 
+                class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 group">
+                <span>Acessar Painel</span>
+                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+            </button>
+        </form>
+        
+        <div class="mt-8 pt-6 border-t border-gray-700/50 text-center">
+            <p class="text-xs text-gray-500">
+                Ambiente seguro protegido por criptografia de ponta a ponta.
+            </p>
+            <!-- Dica para MVP -->
+            <p class="mt-2 text-[10px] text-gray-600 bg-gray-800/50 inline-block px-2 py-1 rounded border border-gray-700">
+                Admin Demo: admin@nps.com / admin123
+            </p>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-msg');
+            const errorText = document.getElementById('error-text');
+            const btn = document.getElementById('login-btn');
+            
+            // Estado de Loading
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Autenticando...`;
+
+            // Reset erro
+            errorDiv.classList.add('hidden');
+
+            try {
+                // Simula um delay mínimo para UX (evita flash rápido demais)
+                const start = Date.now();
+                
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                
+                // Garante pelo menos 600ms de loading visual
+                const elapsed = Date.now() - start;
+                if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed));
+
+                if (res.ok) {
+                    // Animação de sucesso no botão antes de redirecionar
+                    btn.innerHTML = `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Sucesso!`;
+                    btn.classList.remove('from-indigo-600', 'to-violet-600');
+                    btn.classList.add('bg-green-600');
+                    
+                    setTimeout(() => {
+                        localStorage.setItem('nps_token', data.token);
+                        localStorage.setItem('nps_user', JSON.stringify(data.user));
+                        window.location.href = '/dashboard';
+                    }, 500);
+                } else {
+                    throw new Error(data.error || 'Credenciais inválidas.');
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Acessar Painel</span><svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>`;
+                
+                errorText.innerText = error.message;
+                errorDiv.classList.remove('hidden');
+                
+                // Shake effect no painel em caso de erro
+                const panel = document.querySelector('.glass-panel');
+                panel.animate([
+                    { transform: 'translateX(0)' },
+                    { transform: 'translateX(-10px)' },
+                    { transform: 'translateX(10px)' },
+                    { transform: 'translateX(0)' }
+                ], {
+                    duration: 400,
+                    easing: 'ease-in-out'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

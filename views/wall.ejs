@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wall of Love | <%= tenant.name %></title>
+    
+    <!-- Meta Tags para Social Share -->
+    <meta property="og:title" content="O que dizem sobre <%= tenant.name %>">
+    <meta property="og:description" content="Veja os depoimentos dos nossos clientes mais satisfeitos.">
+    <meta property="og:image" content="<%= branding.logoUrl || '' %>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FAFAFA; }
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+        
+        /* Uso de Variáveis CSS para evitar erros de sintaxe com EJS */
+        .brand-text { color: var(--brand-color); }
+        .brand-bg { background-color: var(--brand-color); }
+        .brand-border { border-color: var(--brand-color); }
+        
+        .quote-card {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .quote-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Pattern Background */
+        .bg-pattern {
+            background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<!-- Injeção da cor via Variável CSS no style inline -->
+<body class="min-h-screen flex flex-col bg-pattern" style="--brand-color: <%= branding.brandColor || '#4F46E5' %>;">
+
+    <!-- Header / Hero Section -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <% if (branding.logoUrl) { %>
+                    <img src="<%= branding.logoUrl %>" alt="<%= tenant.name %>" class="h-10 w-auto object-contain">
+                <% } else { %>
+                    <div class="h-10 w-10 rounded-lg brand-bg flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        <%= tenant.name.charAt(0) %>
+                    </div>
+                    <span class="text-xl font-bold text-gray-900 tracking-tight"><%= tenant.name %></span>
+                <% } %>
+            </div>
+            
+            <button onclick="shareWall()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                Compartilhar
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+        
+        <div class="text-center mb-16">
+            <span class="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider mb-4 border border-green-200">Wall of Love</span>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
+                O que nossos clientes <br>
+                <span class="brand-text">estão dizendo.</span>
+            </h1>
+            <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+                A transparência é a nossa base. Veja os feedbacks reais de quem confia na <strong><%= tenant.name %></strong> para crescer.
+            </p>
+        </div>
+
+        <% if (testimonials.length === 0) { %>
+            <div class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900">Ainda estamos coletando histórias!</h3>
+                <p class="text-gray-500">Volte em breve para ver os depoimentos.</p>
+            </div>
+        <% } else { %>
+            
+            <!-- Masonry Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="masonry-grid">
+                <% testimonials.forEach(function(t) { %>
+                    <div class="quote-card bg-white p-8 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                        
+                        <!-- Aspas -->
+                        <div class="mb-4 text-gray-200">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 13.1216 16 12.017 16H9.01735C9.01735 15.4477 9.46507 15 10.0174 15H17.0174C17.5697 15 18.0174 15.4477 18.0174 16V21H14.017ZM23.0174 8C23.0174 5.79086 21.2265 4 19.0174 4H10.0174C7.80821 4 6.01735 5.79086 6.01735 8V11C6.01735 11.5523 5.56964 12 5.01735 12H2.01735V20H5.01735C5.56964 20 6.01735 20.4477 6.01735 21V23H2.01735C0.912784 23 0.0173528 22.1046 0.0173528 21V11C0.0173528 9.9231 0.441144 8.94553 1.12999 8.2215C1.82276 7.49329 2.82522 7.02704 3.93175 6.84504C4.38541 3.52737 7.23483 1 10.7674 1H19.0174C21.7788 1 24.0174 3.23858 24.0174 6V8H23.0174Z"></path></svg>
+                        </div>
+
+                        <p class="text-gray-700 text-lg leading-relaxed mb-6 font-light">
+                            "<%= t.comment %>"
+                        </p>
+
+                        <div class="flex items-center gap-3 pt-6 border-t border-gray-50">
+                            <div class="h-10 w-10 rounded-full brand-bg flex items-center justify-center text-white font-bold text-sm shadow">
+                                <%= t.customer.name.charAt(0) %>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-900 text-sm"><%= t.customer.name %></p>
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    <span><%= t.customer.role || 'Parceiro' %></span>
+                                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                                    <span><%= new Date(t.answeredAt).toLocaleDateString() %></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+
+        <!-- Call to Action -->
+        <div class="mt-20 text-center">
+            <p class="text-gray-400 text-sm mb-4">Gostaria de avaliar nossa empresa?</p>
+            <a href="#" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-full text-white brand-bg hover:opacity-90 transition shadow-lg shadow-indigo-500/20">
+                Deixar meu Depoimento
+            </a>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-gray-100 py-10 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-400 text-sm flex items-center justify-center gap-1">
+                Powered by 
+                <a href="/" class="font-bold brand-text hover:underline flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    NPS Manager
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        function shareWall() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Link copiado para a área de transferência!');
+            }).catch(err => {
+                console.error('Erro ao copiar: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

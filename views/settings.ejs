@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <%- include('partials/head', { title: 'Configurações', branding: settings }) %>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        /* Estilos para o Input de Tags */
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(31, 41, 55, 0.4);
+            border: 1px solid #4b5563;
+            border-radius: 0.75rem;
+            min-height: 50px;
+            transition: border-color 0.2s;
+        }
+        .tag-input-container:focus-within {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 1px #6366f1;
+        }
+        .tag-item {
+            background: rgba(99, 102, 241, 0.15);
+            color: #c7d2fe;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            animation: fadeIn 0.2s ease-out;
+        }
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            color: #fff;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .tag-remove:hover { opacity: 1; }
+        .tag-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 0.875rem;
+            outline: none;
+            min-width: 120px;
+            padding: 4px;
+        }
+        
+        /* Animações e Efeitos */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .pulse-green { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen relative">
+    <!-- Background Noise -->
+    <div class="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none z-0"></div>
+    
+    <%- include('partials/navbar', { page: 'settings', user: user }) %>
+
+    <main class="relative z-10 max-w-6xl mx-auto py-10 px-4">
+        
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="text-3xl font-bold text-white">Configurações</h2>
+                <p class="text-gray-400 text-sm mt-1">Gerencie integrações, aparência e cadastros do sistema.</p>
+            </div>
+            <button onclick="saveAllSettings()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-500/20 transition transform hover:scale-105 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                Salvar Alterações
+            </button>
+        </div>
+
+        <!-- GRID PRINCIPAL -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- COLUNA ESQUERDA: Integrações e Branding -->
+            <div class="space-y-8">
+                
+                <!-- Card WhatsApp -->
+                <div class="glass p-6 rounded-2xl border border-gray-700/50 shadow-xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.463 1.065 2.876 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                    </div>
+
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2 bg-green-500/20 rounded-lg border border-green-500/30">
+                            <svg class="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.463 1.065 2.876 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Conexão WhatsApp</h3>
+                            <p class="text-xs text-gray-400">Canal principal de envio.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between bg-gray-800/80 p-4 rounded-xl border border-gray-700">
+                        <div class="flex items-center gap-3">
+                            <div id="status-dot" class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div>
+                                <p id="status-text" class="text-sm font-bold text-gray-300">Desconectado</p>
+                                <p id="connected-number" class="text-[10px] text-gray-500 font-mono"></p>
+                            </div>
+                        </div>
+                        <button id="wa-btn-action" onclick="toggleWhatsApp()" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg transition shadow-md">
+                            Conectar
+                        </button>
+                    </div>
+                    
+                    <!-- QR Container (Oculto por padrão) -->
+                    <div id="qr-wrapper" class="hidden mt-4 bg-white p-4 rounded-xl flex justify-center shadow-inner">
+                        <div id="qrcode-container"></div>
+                    </div>
+                </div>
+
+                <!-- Branding & Personalização -->
+                <div class="glass p-6 rounded-2xl border border-gray-700/50">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                        Identidade Visual
+                    </h3>
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide">Cor da Marca</label>
+                            <div class="flex items-center gap-3">
+                                <div class="relative w-12 h-12 rounded-full overflow-hidden border-2 border-gray-600">
+                                    <input type="color" id="brandColor" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-none p-0" value="<%= settings.brandColor || '#4F46E5' %>">
+                                </div>
+                                <input type="text" id="brandColorText" class="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white text-sm font-mono focus:border-indigo-500 outline-none" value="<%= settings.brandColor || '#4F46E5' %>">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide">URL do Logo</label>
+                            <input type="url" id="logoUrl" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none" placeholder="https://..." value="<%= settings.logoUrl || '' %>">
+                        </div>
+                    </div>
+                </div>
+                
+                 <!-- Webhooks -->
+                 <div class="glass p-6 rounded-2xl border border-gray-700/50">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Integração (Webhook)
+                    </h3>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wide">URL de Destino</label>
+                        <input type="url" id="webhookUrl" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none font-mono" placeholder="https://seu-sistema.com/hook" value="<%= settings.webhookUrl || '' %>">
+                        <p class="text-[10px] text-gray-500 mt-2">Receba notificações de cada voto em tempo real (JSON POST).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUNA DIREITA: Cadastros Auxiliares -->
+            <div class="space-y-8">
+                <div class="glass p-6 rounded-2xl border border-gray-700/50 h-full flex flex-col">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            Cadastros Auxiliares
+                        </h3>
+                        <p class="text-xs text-gray-400">Defina as opções de segmentação disponíveis nos formulários de clientes.</p>
+                    </div>
+
+                    <!-- Regionais -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-indigo-300 uppercase mb-2">Regionais</label>
+                        <div class="tag-input-container" id="container-regions" onclick="document.getElementById('input-regions').focus()">
+                            <!-- Tags via JS -->
+                            <input type="text" id="input-regions" class="tag-input" placeholder="Adicionar + Enter">
+                        </div>
+                    </div>
+
+                    <!-- Setores -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-indigo-300 uppercase mb-2">Setores</label>
+                        <div class="tag-input-container" id="container-sectors" onclick="document.getElementById('input-sectors').focus()">
+                            <input type="text" id="input-sectors" class="tag-input" placeholder="Adicionar + Enter">
+                        </div>
+                    </div>
+
+                    <!-- Cargos -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-indigo-300 uppercase mb-2">Cargos</label>
+                        <div class="tag-input-container" id="container-roles" onclick="document.getElementById('input-roles').focus()">
+                            <input type="text" id="input-roles" class="tag-input" placeholder="Adicionar + Enter">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto pt-6 border-t border-gray-700/50">
+                        <p class="text-[10px] text-gray-500 italic">
+                            * Clique no 'x' para remover uma opção. As alterações só são aplicadas ao clicar em "Salvar Alterações".
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        const token = localStorage.getItem('nps_token');
+        if(!token) window.location.href = '/login.html';
+        
+        // Estado das Listas (Inicializa vazio, preenche via API)
+        const state = {
+            regions: [],
+            sectors: [],
+            roles: []
+        };
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSettings();
+            
+            // Configura os inputs de tags
+            setupTagInput('regions', state.regions);
+            setupTagInput('sectors', state.sectors);
+            setupTagInput('roles', state.roles);
+            
+            // Sync Cores (input color <-> input text)
+            const colorInput = document.getElementById('brandColor');
+            const colorText = document.getElementById('brandColorText');
+            
+            colorInput.addEventListener('input', (e) => colorText.value = e.target.value);
+            colorText.addEventListener('input', (e) => colorInput.value = e.target.value);
+        });
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/admin/settings', { headers: { 'Authorization': `Bearer ${token}` } });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Preenche Campos de Texto
+                    document.getElementById('brandColor').value = data.brandColor || '#4F46E5';
+                    document.getElementById('brandColorText').value = data.brandColor || '#4F46E5';
+                    document.getElementById('logoUrl').value = data.logoUrl || '';
+                    document.getElementById('webhookUrl').value = data.webhookUrl || '';
+
+                    // Preenche Listas (Arrays vindos do JSON.parse no server)
+                    state.regions = data.regions || [];
+                    state.sectors = data.sectors || [];
+                    state.roles = data.roles || [];
+                    
+                    // Renderiza as tags iniciais
+                    renderTags('regions');
+                    renderTags('sectors');
+                    renderTags('roles');
+                }
+            } catch (e) { console.error("Erro load settings:", e); }
+        }
+
+        // --- LÓGICA DE TAGS (Input + Render) ---
+        function setupTagInput(key, arrayRef) {
+            const input = document.getElementById(`input-${key}`);
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = input.value.trim();
+                    // Adiciona se não estiver vazio e não for duplicado
+                    if (val && !arrayRef.includes(val)) {
+                        arrayRef.push(val);
+                        renderTags(key);
+                        input.value = '';
+                    }
+                }
+                // Backspace para remover último item se input vazio
+                if (e.key === 'Backspace' && input.value === '' && arrayRef.length > 0) {
+                    arrayRef.pop();
+                    renderTags(key);
+                }
+            });
+        }
+
+        function renderTags(key) {
+            const container = document.getElementById(`container-${key}`);
+            const input = document.getElementById(`input-${key}`);
+            const array = state[key];
+
+            // Remove todos os elementos .tag-item, mantendo o input
+            const currentTags = container.querySelectorAll('.tag-item');
+            currentTags.forEach(tag => tag.remove());
+
+            // Recria as tags
+            array.forEach((item, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag-item';
+                tag.innerHTML = `
+                    <span>${item}</span>
+                    <span class="tag-remove" onclick="removeTag('${key}', ${index})">×</span>
+                `;
+                // Insere antes do input
+                container.insertBefore(tag, input);
+            });
+        }
+
+        // Função global para remover tag ao clicar no X
+        window.removeTag = (key, index) => {
+            state[key].splice(index, 1);
+            renderTags(key);
+        };
+
+        // --- SALVAR TUDO ---
+        async function saveAllSettings() {
+            const payload = {
+                brandColor: document.getElementById('brandColor').value,
+                logoUrl: document.getElementById('logoUrl').value,
+                webhookUrl: document.getElementById('webhookUrl').value,
+                regions: state.regions,
+                sectors: state.sectors,
+                roles: state.roles
+            };
+
+            const btn = document.querySelector('button[onclick="saveAllSettings()"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Salvando...`;
+
+            try {
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: 'Configurações atualizadas.',
+                        background: '#1f2937',
+                        color: '#fff',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    throw new Error('Falha ao salvar');
+                }
+            } catch (e) { 
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Não foi possível salvar as alterações.',
+                    background: '#1f2937',
+                    color: '#fff'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // --- LÓGICA DO WHATSAPP (Socket.IO) ---
+        const socket = io({ auth: { token: token }, reconnection: true });
+        
+        socket.on('whatsapp:status', (data) => {
+            const dot = document.getElementById('status-dot');
+            const txt = document.getElementById('status-text');
+            const num = document.getElementById('connected-number');
+            const qrWrapper = document.getElementById('qr-wrapper');
+            const qrBox = document.getElementById('qrcode-container');
+            const btn = document.getElementById('wa-btn-action');
+
+            if(data.status === 'CONNECTED') {
+                dot.className = "w-3 h-3 rounded-full bg-green-500 pulse-green";
+                txt.innerText = "Online";
+                txt.className = "text-sm font-bold text-green-400";
+                num.innerText = data.connectedNumber ? `+${data.connectedNumber}` : '';
+                
+                qrWrapper.classList.add('hidden');
+                btn.innerText = "Desconectar";
+                btn.setAttribute('onclick', 'logoutWhatsApp()');
+                btn.classList.replace('bg-indigo-600', 'bg-red-600');
+                btn.classList.replace('hover:bg-indigo-500', 'hover:bg-red-500');
+            } else {
+                dot.className = "w-3 h-3 rounded-full bg-red-500";
+                txt.innerText = "Desconectado";
+                txt.className = "text-sm font-bold text-gray-300";
+                num.innerText = "";
+                
+                btn.innerText = "Conectar";
+                btn.setAttribute('onclick', 'toggleWhatsApp()');
+                btn.classList.replace('bg-red-600', 'bg-indigo-600');
+                btn.classList.replace('hover:bg-red-500', 'hover:bg-indigo-500');
+
+                if (data.qr) {
+                    qrWrapper.classList.remove('hidden');
+                    // IMPORTANTE: Exibe a imagem gerada pelo backend diretamente
+                    qrBox.innerHTML = `<img src="${data.qr}" alt="QR Code" class="w-full h-full object-contain">`;
+                } else if (data.status === 'CONNECTING') {
+                    qrWrapper.classList.remove('hidden');
+                    qrBox.innerHTML = '<div class="flex flex-col items-center justify-center h-48 gap-3"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div><span class="text-xs text-gray-500">Iniciando serviço...</span></div>';
+                } else {
+                    qrWrapper.classList.add('hidden');
+                }
+            }
+        });
+
+        // Trigger inicial do status
+        fetch('/api/whatsapp/status', { headers: { 'Authorization': `Bearer ${token}` } });
+
+        async function toggleWhatsApp() {
+             // Força verificação/início
+             const btn = document.getElementById('wa-btn-action');
+             btn.innerHTML = '<div class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></div>';
+             await fetch('/api/whatsapp/status', { headers: { 'Authorization': `Bearer ${token}` } });
+        }
+        
+        async function logoutWhatsApp() {
+            if(!confirm("Tem certeza que deseja desconectar?")) return;
+            await fetch('/api/whatsapp/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            window.location.reload();
+        }
+
+    </script>
+</body>
+</html>

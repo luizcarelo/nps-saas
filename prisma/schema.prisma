@@ -1,0 +1,478 @@
+// ============================================
+// NPS MANAGER V5 - DATABASE SCHEMA (POSTGRESQL)
+// Sistema Multi-Tenant com SuperAdmin
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url= env("DATABASE_URL")
+}
+
+// ============================================
+// SUPER ADMIN (Gerenciamento da Plataforma)
+// ============================================
+
+model SuperAdmin {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        String   @default("SUPER_ADMIN") // SUPER_ADMIN, SUPPORT
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+// ============================================
+// PLANOS E ASSINATURAS
+// ============================================
+
+model Plan {
+  id              String   @id @default(uuid())
+  name            String   @unique // FREE, STARTER, PRO, ENTERPRISE
+  displayName     String
+  description     String?
+  
+  // Preços
+  priceMonthly    Decimal  @db.Decimal(10, 2) @default(0)
+  priceYearly     Decimal  @db.Decimal(10, 2) @default(0)
+  
+  // Limites
+  maxUsers        Int      @default(1)
+  maxCustomers    Int      @default(100)
+  maxCampaigns    Int      @default(5)
+  maxEmailsMonth  Int      @default(500)
+  maxWhatsappMonth Int     @default(100)
+  
+  // Features
+  features        String[] @default([])
+  hasWhatsapp     Boolean  @default(false)
+  hasEmail        Boolean  @default(true)
+  hasApi          Boolean  @default(false)
+  hasReports      Boolean  @default(true)
+  hasAiAnalysis   Boolean  @default(false)
+  hasCustomBranding Boolean @default(false)
+  hasPrioritySupport Boolean @default(false)
+  
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  
+  tenants         Tenant[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model Subscription {
+  id            String    @id @default(uuid())
+  
+  tenantId      String    @unique
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  planId        String
+  
+  status        String    @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED, SUSPENDED
+  billingCycle  String    @default("MONTHLY") // MONTHLY, YEARLY
+  
+  // Datas
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  cancelledAt   DateTime?
+  
+  // Pagamento
+  lastPaymentAt DateTime?
+  nextPaymentAt DateTime?
+  paymentMethod String?   // PIX, CREDIT_CARD, BOLETO
+  
+  // Uso atual
+  currentUsers     Int    @default(0)
+  currentCustomers Int    @default(0)
+  currentCampaigns Int    @default(0)
+  emailsSentMonth  Int    @default(0)
+  whatsappSentMonth Int   @default(0)
+  usageResetAt     DateTime @default(now())
+  
+  metadata      Json?     @db.JsonB
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ============================================
+// MULTI-TENANT
+// ============================================
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  apiKey      String   @unique @default(uuid())
+  
+  // Plano
+  planId      String?
+  plan        Plan?    @relation(fields: [planId], references: [id])
+  
+  // Status
+  isActive    Boolean  @default(true)
+  isTrial     Boolean  @default(true)
+  trialEndsAt DateTime?
+  
+  // Contato Principal
+  ownerName   String?
+  ownerEmail  String?
+  ownerPhone  String?
+  
+  // Endereço (para faturamento)
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?  @default("BR")
+  
+  // Dados fiscais
+  document    String?  // CNPJ ou CPF
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  settings     TenantSettings?
+  subscription Subscription?
+  users        User[]
+  campaigns    Campaign[]
+  customers    Customer[]
+  templates    MessageTemplate[]
+  emailLogs    EmailLog[]
+  auditLogs    AuditLog[]
+
+  @@map("tenants")
+}
+
+model TenantSettings {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Branding
+  brandColor        String   @default("#4F46E5")
+  logoUrl           String?
+  companyEmail      String?
+
+  // Configurações de Listas
+  regionsConfig     String?  @default("[\"Sul\", \"Sudeste\", \"Centro-Oeste\", \"Norte\", \"Nordeste\"]")
+  sectorsConfig     String?  @default("[\"Varejo\", \"Tecnologia\", \"Saúde\", \"Financeiro\", \"Serviços\"]")
+  rolesConfig       String?  @default("[\"Diretor\", \"Gerente\", \"Coordenador\", \"Analista\", \"CEO\"]")
+
+  // SMTP Personalizado
+  smtpHost          String?
+  smtpPort          Int?
+  smtpUser          String?
+  smtpPass          String?
+  smtpFrom          String?
+
+  // WhatsApp
+  waSessionData     Json?    @db.JsonB
+  waConnected       Boolean  @default(false)
+  waLastConnected   DateTime?
+
+  // Integrações
+  webhookUrl        String?
+  webhookSecret     String?
+  
+  // Limites (override do plano)
+  dailyEmailLimit   Int      @default(500)
+  dailyWhatsappLimit Int     @default(200)
+  
+  updatedAt         DateTime @updatedAt
+
+  @@map("tenant_settings")
+}
+
+// ============================================
+// LOG DE AUDITORIA
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  userEmail String?
+  
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc
+  entity    String   // User, Customer, Campaign, etc
+  entityId  String?
+  
+  oldData   Json?    @db.JsonB
+  newData   Json?    @db.JsonB
+  
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// USUÁRIOS
+// ============================================
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String?
+  role        String   @default("ADMIN") // ADMIN, MANAGER, VIEWER
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  treatments  NPSResponse[] @relation("TreatedBy")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ============================================
+// CLIENTES
+// ============================================
+
+model Customer {
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  phone        String?
+  cnpj         String?
+  
+  // Segmentação
+  companyName  String?
+  sector       String?
+  regional     String?
+  contractType String?
+  role         String?
+  isActive     Boolean  @default(true)
+  
+  // Tags e Metadados
+  tags         String[] @default([])
+  metadata     Json?    @db.JsonB
+  
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responses    NPSResponse[]
+  chatMessages ChatMessage[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([tenantId, regional])
+  @@index([tenantId, sector])
+  @@map("customers")
+}
+
+// ============================================
+// CAMPANHAS
+// ============================================
+
+model Campaign {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  
+  channel       String   // WHATSAPP, EMAIL
+  template      String   @default("PADRAO")
+  status        String   @default("DRAFT")
+  
+  // Agendamento
+  scheduledAt   DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  // Métricas
+  totalSent     Int      @default(0)
+  totalFailed   Int      @default(0)
+  totalAnswered Int      @default(0)
+  
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responses     NPSResponse[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("campaigns")
+}
+
+// ============================================
+// RESPOSTAS NPS
+// ============================================
+
+model NPSResponse {
+  id              String    @id @default(uuid())
+  token           String    @unique
+  
+  score           Int?
+  comment         String?   @db.Text
+  
+  // Diagnóstico Adicional
+  problemSolved   Boolean?
+  serviceRating   Int?
+  wouldBuyAgain   Boolean?
+  
+  status          String    @default("PENDING")
+  channel         String    @default("WHATSAPP")
+  
+  // Análise IA
+  tags            String[]  @default([])
+  sentiment       String?
+  aiSummary       String?   @db.Text
+  
+  // Tratativa
+  treatmentStatus String    @default("PENDING")
+  treatmentNotes  String?   @db.Text
+  treatedAt       DateTime?
+  treatedById     String?
+  treatedBy       User?     @relation("TreatedBy", fields: [treatedById], references: [id])
+  
+  // Tracking
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  viewedAt        DateTime?
+  answeredAt      DateTime?
+  expiresAt       DateTime?
+  
+  metadata        Json?     @db.JsonB
+  userAgent       String?
+  ipAddress       String?
+  
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([token])
+  @@index([campaignId])
+  @@index([customerId])
+  @@index([status])
+  @@map("nps_responses")
+}
+
+// ============================================
+// TEMPLATES DE MENSAGEM
+// ============================================
+
+model MessageTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  channel     String
+  subject     String?
+  body        String   @db.Text
+  variables   String[] @default([])
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("message_templates")
+}
+
+// ============================================
+// LOGS DE EMAIL
+// ============================================
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  to        String
+  subject   String
+  status    String
+  provider  String?
+  messageId String?
+  error     String?  @db.Text
+  metadata  Json?    @db.JsonB
+  
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("email_logs")
+}
+
+// ============================================
+// CHAT EM TEMPO REAL
+// ============================================
+
+model ChatMessage {
+  id           String    @id @default(uuid())
+  
+  // Conteúdo
+  content      String    @db.Text
+  direction    String    // incoming, outgoing
+  status       String    @default("sent") // sent, delivered, read, failed
+  
+  // IDs do WhatsApp
+  messageId    String?
+  replyToId    String?
+  
+  // Cliente
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName String?
+  phone        String
+  
+  // Metadados
+  mediaType    String?   // text, image, audio, video, document
+  mediaUrl     String?
+  metadata     Json?     @db.JsonB
+  
+  // Tracking
+  readAt       DateTime?
+  deliveredAt  DateTime?
+  
+  tenantId     String
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([phone])
+  @@index([tenantId, createdAt])
+  @@map("chat_messages")
+}

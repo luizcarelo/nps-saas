@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <%- include('partials/head', { title: 'Dashboard Executivo', branding: settings }) %>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        .pulse-green { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .pulse-red { animation: pulse-red 2s infinite; }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        .detractor-card:hover { transform: translateY(-2px); }
+        
+        @media print {
+            body { background: white; color: black; }
+            .no-print { display: none !important; }
+            .glass, .glass-card { background: white !important; border: 1px solid #ccc !important; box-shadow: none !important; color: black !important; }
+            * { color-adjust: exact; -webkit-print-color-adjust: exact; }
+            canvas { max-height: 300px; }
+            .text-white { color: black !important; }
+            .text-gray-400 { color: #555 !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen relative overflow-x-hidden">
+    <!-- Background Effects -->
+    <div class="fixed top-0 left-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 z-0 no-print"></div>
+    <div class="fixed bottom-0 right-0 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 z-0 no-print"></div>
+
+    <div class="no-print">
+        <%- include('partials/navbar', { page: 'dashboard', user: user }) %>
+    </div>
+
+    <main class="relative z-10 max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header & Filtros -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white tracking-tight flex items-center gap-2">
+                    Visão Geral
+                    <span id="live-indicator" class="hidden relative flex h-3 w-3 no-print" title="Atualização em Tempo Real">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                </h1>
+                <p class="text-gray-400 text-sm">Monitoramento estratégico de satisfação.</p>
+            </div>
+            
+            <div class="flex gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-sm no-print">
+                <select id="filter-month" onchange="loadDashboard()" class="bg-transparent text-sm text-white px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-gray-700/50 transition">
+                    <option value="">Todo o Histórico</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+                <select id="filter-year" onchange="loadDashboard()" class="bg-transparent text-sm text-white px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-gray-700/50 transition">
+                    <!-- Preenchido via JS -->
+                </select>
+                <div class="w-px bg-gray-700 mx-1"></div>
+                <button onclick="window.print()" class="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition" title="Imprimir Relatório">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                </button>
+                <button onclick="openWaModal()" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-green-900/20">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.463 1.065 2.876 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Alerta de Tratativas URGENTE - CLICÁVEL -->
+        <a href="/messages?tab=pending-treatment" id="pending-alert" class="hidden mb-6 bg-gradient-to-r from-red-900/70 to-red-800/50 border-2 border-red-500/50 text-red-100 px-6 py-5 rounded-2xl flex items-center justify-between shadow-2xl backdrop-blur-md transition-all hover:from-red-900/90 hover:to-red-800/70 hover:border-red-400/70 cursor-pointer no-print pulse-red group">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-red-500 rounded-xl shadow-lg shadow-red-500/40 group-hover:scale-110 transition-transform">
+                    <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <strong class="font-bold text-xl text-white">🚨 Ação Urgente Necessária!</strong>
+                        <span class="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">NOVO</span>
+                    </div>
+                    <p class="text-sm opacity-90">
+                        Você tem <span id="pending-count" class="font-bold text-white text-lg bg-red-500/80 px-2 py-0.5 rounded mx-1">0</span> clientes detratores aguardando tratativa. 
+                        <span class="underline font-semibold">Clique para gerenciar agora!</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-red-200 group-hover:text-white transition-colors">
+                <span class="text-sm font-bold hidden sm:inline">Ir para Tratativas</span>
+                <svg class="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+            </div>
+        </a>
+
+        <!-- Grid Principal -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- NPS Score -->
+            <div class="glass p-6 rounded-2xl border border-gray-700/50 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                <div class="relative z-10">
+                    <p class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">NPS Score</p>
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-5xl font-extrabold text-white tracking-tighter" id="nps-value">--</h2>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 font-medium" id="nps-zone">Calculando...</p>
+                </div>
+            </div>
+
+            <!-- Respostas -->
+            <div class="glass p-6 rounded-2xl border border-gray-700/50">
+                <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Respostas</p>
+                <div class="flex items-end gap-2">
+                    <h2 class="text-3xl font-bold text-white" id="total-responses">--</h2>
+                    <span class="text-xs text-gray-500 mb-1">votos</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2">Taxa de resposta: <span id="response-rate" class="text-white">--%</span></p>
+            </div>
+
+            <!-- Composição -->
+            <div class="glass p-6 rounded-2xl border border-gray-700/50 col-span-2">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Composição da Nota</p>
+                <div class="flex items-center gap-1 h-4 rounded-full overflow-hidden bg-gray-800 mb-3 border border-gray-700">
+                    <div id="bar-promoters" class="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-1000" style="width: 0%" title="Promotores"></div>
+                    <div id="bar-neutrals" class="h-full bg-gradient-to-r from-yellow-500 to-yellow-400 transition-all duration-1000" style="width: 0%" title="Neutros"></div>
+                    <div id="bar-detractors" class="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-1000" style="width: 0%" title="Detratores"></div>
+                </div>
+                <div class="flex justify-between text-xs font-medium">
+                    <span class="flex items-center gap-1.5 text-green-400"><div class="w-2 h-2 rounded-full bg-green-500"></div>Promotores: <b id="count-promoters" class="text-white text-sm">0</b></span>
+                    <span class="flex items-center gap-1.5 text-yellow-400"><div class="w-2 h-2 rounded-full bg-yellow-500"></div>Neutros: <b id="count-neutrals" class="text-white text-sm">0</b></span>
+                    <a href="/messages?tab=detractors" class="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition cursor-pointer group">
+                        <div class="w-2 h-2 rounded-full bg-red-500"></div>Detratores: <b id="count-detractors" class="text-white text-sm group-hover:underline">0</b>
+                        <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DE DETRATORES RECENTES -->
+        <div id="detractors-section" class="hidden mb-8 no-print">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-red-500/20 rounded-xl border border-red-500/30">
+                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Detratores Aguardando Tratativa</h2>
+                        <p class="text-xs text-gray-400">Clientes que precisam de atenção imediata</p>
+                    </div>
+                </div>
+                <a href="/messages?tab=pending-treatment" class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold text-white transition shadow-lg shadow-red-900/30 flex items-center gap-2">
+                    <span>Ver Todos</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="detractors-list">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+
+        <!-- GRÁFICO E FEEDBACKS -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Gráfico de Evolução -->
+            <div class="lg:col-span-2 glass p-6 rounded-2xl border border-gray-700/50">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Evolução do NPS</h3>
+                        <p class="text-xs text-gray-500">Histórico de desempenho mensal</p>
+                    </div>
+                    <div class="text-right">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase">Receita em Risco (Est.)</h4>
+                        <p id="revenue-risk" class="text-lg font-bold text-red-400">R$ --</p>
+                    </div>
+                </div>
+                <div class="h-64 w-full">
+                    <canvas id="npsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Feedbacks Recentes -->
+            <div class="glass p-6 rounded-2xl border border-gray-700/50 flex flex-col h-[400px] lg:h-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-white text-lg">Últimos Feedbacks</h3>
+                    <a href="/messages" class="text-[10px] bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-white transition">Ver Tudo</a>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3" id="feedback-list">
+                    <!-- Preenchido via JS -->
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500 gap-2">
+                        <div class="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                        <span class="text-xs">Carregando dados...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal WhatsApp -->
+    <div id="wa-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-4 z-[100] transition-opacity duration-300">
+        <div class="glass bg-gray-900 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-gray-700 relative transform transition-all scale-100">
+            <button onclick="closeWaModal()" class="absolute top-4 right-4 text-gray-500 hover:text-white transition">✕</button>
+            
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/20">
+                    <svg class="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.463 1.065 2.876 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">Conectar WhatsApp</h3>
+                <p class="text-xs text-gray-400">Escaneie o QR Code abaixo para ativar o envio de pesquisas.</p>
+            </div>
+            
+            <div id="qrcode-container" class="bg-white p-3 rounded-xl mx-auto w-fit mb-6 min-h-[256px] flex items-center justify-center shadow-inner">
+                <span class="text-gray-800 text-xs animate-pulse">Gerando código seguro...</span>
+            </div>
+            
+            <div id="wa-actions" class="hidden">
+                 <button onclick="logoutWhatsApp()" class="text-red-400 hover:text-red-300 text-sm font-semibold border border-red-500/30 px-4 py-2 rounded-lg hover:bg-red-500/10 transition">Desconectar Sessão</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Lógica -->
+    <script>
+        const token = localStorage.getItem('nps_token');
+        if (!token) window.location.href = '/login.html';
+        
+        let npsChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            
+            // Popula ano dinamicamente
+            const yearSelect = document.getElementById('filter-year');
+            const currentYear = today.getFullYear();
+            yearSelect.innerHTML = `
+                <option value="${currentYear}">${currentYear}</option>
+                <option value="${currentYear - 1}">${currentYear - 1}</option>
+            `;
+
+            // Default: Mês Atual
+            document.getElementById('filter-month').value = today.getMonth() + 1;
+            
+            loadDashboard();
+            loadDetractors();
+        });
+
+        async function loadDashboard() {
+            const month = document.getElementById('filter-month').value;
+            const year = document.getElementById('filter-year').value;
+            
+            try {
+                const res = await fetch(`/api/admin/dashboard?month=${month}&year=${year}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    updateMetrics(data.metrics);
+                    updateChart(data.chart);
+                    updateFeedbacks(data.feedbacks);
+                }
+            } catch (e) { console.error("Erro dashboard:", e); }
+        }
+
+        // Carregar detratores pendentes
+        async function loadDetractors() {
+            try {
+                const res = await fetch('/api/admin/messages?tab=pending-treatment&limit=6', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    renderDetractors(data.messages);
+                }
+            } catch (e) { 
+                console.error("Erro ao carregar detratores:", e); 
+            }
+        }
+
+        // Renderizar cards de detratores
+        function renderDetractors(detractors) {
+            const section = document.getElementById('detractors-section');
+            const container = document.getElementById('detractors-list');
+            
+            if (!detractors || detractors.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            
+            section.classList.remove('hidden');
+            
+            container.innerHTML = detractors.map(d => `
+                <a href="/messages?tab=pending-treatment" class="detractor-card glass p-4 rounded-xl border border-red-500/30 hover:border-red-400/50 transition-all cursor-pointer group bg-red-900/10 hover:bg-red-900/20">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-red-500/30">
+                                ${(d.customer?.name || 'A')[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white text-sm">${d.customer?.name || 'Cliente'}</p>
+                                <p class="text-[10px] text-gray-500">${d.customer?.companyName || d.customer?.email || '-'}</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-red-500 text-white text-lg font-bold rounded-lg shadow-lg shadow-red-500/30">${d.score}</span>
+                    </div>
+                    <p class="text-xs text-gray-400 italic line-clamp-2 mb-3">"${d.comment || 'Sem comentário'}"</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-gray-500">${d.answeredAt ? new Date(d.answeredAt).toLocaleDateString('pt-BR') : '-'}</span>
+                        <span class="text-[10px] text-red-400 font-semibold flex items-center gap-1 group-hover:text-red-300">
+                            Tratar agora
+                            <svg class="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </span>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        function updateMetrics(m) {
+            animateValue("nps-value", parseInt(document.getElementById('nps-value').innerText) || 0, m.nps, 1000);
+            
+            let zoneText = "Zona de Excelência 🏆";
+            let zoneColor = "text-green-400";
+            if (m.nps < 0) { zoneText = "Zona Crítica 🚨"; zoneColor = "text-red-400"; }
+            else if (m.nps < 50) { zoneText = "Zona de Aperfeiçoamento ⚠️"; zoneColor = "text-yellow-400"; }
+            else if (m.nps < 75) { zoneText = "Zona de Qualidade ✅"; zoneColor = "text-blue-400"; }
+            
+            const zoneEl = document.getElementById('nps-zone');
+            zoneEl.innerText = zoneText;
+            zoneEl.className = `text-xs mt-2 font-medium ${zoneColor}`;
+
+            document.getElementById('total-responses').innerText = m.total;
+            document.getElementById('response-rate').innerText = m.responseRate + '%';
+
+            document.getElementById('count-promoters').innerText = m.promoters;
+            document.getElementById('count-neutrals').innerText = m.neutrals;
+            document.getElementById('count-detractors').innerText = m.detractors;
+
+            const total = m.total || 1;
+            document.getElementById('bar-promoters').style.width = (m.promoters / total * 100) + '%';
+            document.getElementById('bar-neutrals').style.width = (m.neutrals / total * 100) + '%';
+            document.getElementById('bar-detractors').style.width = (m.detractors / total * 100) + '%';
+
+            const riskValue = (m.detractors || 0) * 1500;
+            document.getElementById('revenue-risk').innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(riskValue);
+
+            const pendingAlert = document.getElementById('pending-alert');
+            if (m.pendingTreatments && m.pendingTreatments > 0) {
+                pendingAlert.classList.remove('hidden');
+                pendingAlert.classList.add('flex');
+                document.getElementById('pending-count').innerText = m.pendingTreatments;
+            } else {
+                pendingAlert.classList.add('hidden');
+                pendingAlert.classList.remove('flex');
+            }
+        }
+
+        function updateChart(chartData) {
+            const ctx = document.getElementById('npsChart').getContext('2d');
+            
+            if (npsChart) {
+                npsChart.destroy();
+            }
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+            npsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'NPS',
+                        data: chartData.data,
+                        borderColor: '#6366f1',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#1f2937',
+                        pointBorderColor: '#6366f1',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(31, 41, 55, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: 'rgba(75, 85, 99, 0.5)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: -100,
+                            max: 100,
+                            grid: { color: 'rgba(75, 85, 99, 0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateFeedbacks(list) {
+            const container = document.getElementById('feedback-list');
+            container.innerHTML = '';
+
+            if (!list || list.length === 0) {
+                container.innerHTML = `<li class="p-10 text-center text-gray-500 flex flex-col items-center"><span class="text-sm">Ainda sem feedback.</span><span class="text-xs opacity-50">Selecione outro período ou inicie uma campanha.</span></li>`;
+                return;
+            }
+
+            list.forEach(item => {
+                let badgeClass = 'bg-gray-700 text-gray-300 border-gray-600';
+                let isDetractor = false;
+                if (item.score >= 9) badgeClass = 'bg-green-900/40 text-green-300 border-green-500/30';
+                else if (item.score <= 6) {
+                    badgeClass = 'bg-red-900/40 text-red-300 border-red-500/30';
+                    isDetractor = true;
+                }
+                else badgeClass = 'bg-yellow-900/40 text-yellow-300 border-yellow-500/30';
+
+                const customerName = item.customer?.name || 'Cliente Anônimo';
+                const div = document.createElement('div');
+                div.className = `bg-gray-800/40 p-4 rounded-xl border ${isDetractor ? 'border-red-500/30 hover:border-red-400/50' : 'border-gray-700/50'} hover:bg-gray-800 transition group ${isDetractor ? 'cursor-pointer' : ''}`;
+                if (isDetractor) {
+                    div.onclick = () => window.location.href = '/messages?tab=detractors';
+                }
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-sm text-white">${customerName}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] border ${badgeClass} font-bold shadow-sm">${item.score}</span>
+                            ${isDetractor ? '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold">DETRATOR</span>' : ''}
+                        </div>
+                        <span class="text-[10px] text-gray-500">${new Date(item.answeredAt).toLocaleDateString()}</span>
+                    </div>
+                    <p class="text-xs text-gray-400 italic leading-relaxed group-hover:text-gray-300 transition-colors">"${item.comment || 'Sem comentário escrito.'}"</p>
+                    ${isDetractor ? '<p class="text-[10px] text-red-400 mt-2 font-semibold group-hover:text-red-300">→ Clique para tratar</p>' : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = document.getElementById(id);
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const timer = setInterval(() => {
+                current += increment;
+                obj.innerText = current;
+                if (current == end) { clearInterval(timer); }
+            }, Math.max(stepTime, 10));
+        }
+
+        // --- Socket.IO & WhatsApp ---
+        const socket = io({ auth: { token: token }, reconnection: true });
+
+        socket.on("connect", () => {
+            console.log("🟢 Conectado");
+            document.getElementById('live-indicator').classList.remove('hidden');
+            fetch('/api/whatsapp/status', { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(r => r.json())
+                .then(data => updateWaStatus(data));
+        });
+
+        socket.on("dashboard:update", () => {
+            console.log("⚡ Update recebido");
+            loadDashboard();
+            loadDetractors();
+        });
+
+        // WhatsApp Modal Logic
+        let waInterval;
+        function updateWaStatus(data) {
+            const modalQr = document.getElementById('qrcode-container');
+            const modalActions = document.getElementById('wa-actions');
+            
+            if (data.status === 'CONNECTED') {
+                modalQr.innerHTML = `<div class="flex flex-col items-center gap-3"><div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center animate-bounce"><svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><span class="text-green-400 font-bold">Conectado!</span><span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Num: ${data.connectedNumber || '---'}</span></div>`;
+                modalActions.classList.remove('hidden');
+            } else if (data.qr) {
+                modalQr.innerHTML = "";
+                const img = new Image();
+                img.src = data.qrDataUrl || data.qr;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                modalQr.appendChild(img);
+                modalActions.classList.add('hidden');
+            }
+        }
+
+        async function checkWaStatus() {
+            try {
+                const res = await fetch('/api/whatsapp/status', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                updateWaStatus(data);
+            } catch(e) {}
+        }
+
+        async function logoutWhatsApp() {
+            if(!confirm("Desconectar WhatsApp?")) return;
+            await fetch('/api/whatsapp/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            window.location.reload();
+        }
+
+        function openWaModal() {
+            document.getElementById('wa-modal').classList.remove('hidden');
+            document.getElementById('wa-modal').classList.add('flex');
+            checkWaStatus();
+            waInterval = setInterval(checkWaStatus, 3000);
+        }
+
+        function closeWaModal() {
+            document.getElementById('wa-modal').classList.add('hidden');
+            document.getElementById('wa-modal').classList.remove('flex');
+            if(waInterval) clearInterval(waInterval);
+        }
+    </script>
+</body>
+</html>

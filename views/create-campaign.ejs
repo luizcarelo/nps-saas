@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <%- include('partials/head', { title: 'Nova Campanha', branding: settings }) %>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.8); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 0.8); }
+        
+        .tab-active { border-bottom: 2px solid #6366f1; color: white; }
+        .tab-inactive { border-bottom: 2px solid transparent; color: #9ca3af; }
+        .tab-inactive:hover { color: #d1d5db; }
+        
+        .channel-card { transition: all 0.2s ease; }
+        .channel-card.selected { 
+            border-color: #6366f1 !important; 
+            background: rgba(99, 102, 241, 0.1) !important; 
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+        }
+        .channel-card:hover { transform: translateY(-2px); }
+        
+        .preset-card.selected {
+            border-color: #6366f1 !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen relative">
+    <div class="fixed inset-0 bg-gradient-to-br from-indigo-900/20 to-gray-900 pointer-events-none z-0"></div>
+    
+    <nav class="glass sticky top-0 z-40 border-b border-gray-700/50">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="/dashboard" class="text-gray-400 hover:text-white flex items-center gap-2 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Voltar
+            </a>
+            <span class="font-bold text-lg">🚀 Nova Campanha NPS</span>
+            <div class="w-10"></div>
+        </div>
+    </nav>
+
+    <main class="relative z-10 max-w-5xl mx-auto py-8 px-4">
+        
+        <form id="campaign-form" onsubmit="handleDispatch(event)">
+            
+            <!-- PASSO 1: CANAL DE ENVIO -->
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">1</div>
+                    <h2 class="text-lg font-bold text-white">Escolha o Canal de Envio</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- WhatsApp -->
+                    <div onclick="selectChannel('WHATSAPP')" id="channel-whatsapp" class="channel-card selected glass p-6 rounded-2xl border-2 border-green-500/50 cursor-pointer">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-white text-lg mb-1">WhatsApp</h3>
+                                <p class="text-gray-400 text-sm mb-3">Envio direto via WhatsApp. Cliente responde a nota por mensagem de texto.</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-2 py-1 bg-green-900/30 text-green-400 text-[10px] rounded-full font-semibold">✅ Alta taxa de resposta</span>
+                                    <span class="px-2 py-1 bg-green-900/30 text-green-400 text-[10px] rounded-full font-semibold">⚡ Resposta imediata</span>
+                                </div>
+                            </div>
+                            <div id="check-whatsapp" class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Email -->
+                    <div onclick="selectChannel('EMAIL')" id="channel-email" class="channel-card glass p-6 rounded-2xl border-2 border-gray-600 cursor-pointer">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-white text-lg mb-1">E-mail</h3>
+                                <p class="text-gray-400 text-sm mb-3">Envio por email com botões clicáveis de 0-10. Cliente vota em 1 clique.</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-2 py-1 bg-blue-900/30 text-blue-400 text-[10px] rounded-full font-semibold">📊 Fácil rastreamento</span>
+                                    <span class="px-2 py-1 bg-blue-900/30 text-blue-400 text-[10px] rounded-full font-semibold">🖱️ 1 clique para votar</span>
+                                </div>
+                            </div>
+                            <div id="check-email" class="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center hidden">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="channel" value="WHATSAPP">
+            </div>
+
+            <!-- PASSO 2: MODELO DE MENSAGEM -->
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>
+                    <h2 class="text-lg font-bold text-white">Escolha o Modelo</h2>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <button type="button" onclick="loadPreset('PADRAO')" id="preset-PADRAO" class="preset-card selected bg-gray-800/50 hover:bg-gray-700/80 border-2 border-gray-700 rounded-xl p-4 text-left transition">
+                        <div class="text-2xl mb-2">📅</div>
+                        <div class="font-bold text-sm text-gray-200">Padrão</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Pesquisa geral</div>
+                    </button>
+                    <button type="button" onclick="loadPreset('ONBOARDING')" id="preset-ONBOARDING" class="preset-card bg-gray-800/50 hover:bg-gray-700/80 border-2 border-gray-700 rounded-xl p-4 text-left transition">
+                        <div class="text-2xl mb-2">🚀</div>
+                        <div class="font-bold text-sm text-gray-200">Onboarding</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Novos clientes</div>
+                    </button>
+                    <button type="button" onclick="loadPreset('SUPORTE')" id="preset-SUPORTE" class="preset-card bg-gray-800/50 hover:bg-gray-700/80 border-2 border-gray-700 rounded-xl p-4 text-left transition">
+                        <div class="text-2xl mb-2">🎧</div>
+                        <div class="font-bold text-sm text-gray-200">Suporte</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Pós atendimento</div>
+                    </button>
+                    <button type="button" onclick="loadPreset('AMIGAVEL')" id="preset-AMIGAVEL" class="preset-card bg-gray-800/50 hover:bg-gray-700/80 border-2 border-gray-700 rounded-xl p-4 text-left transition">
+                        <div class="text-2xl mb-2">👋</div>
+                        <div class="font-bold text-sm text-gray-200">Amigável</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Tom informal</div>
+                    </button>
+                </div>
+                
+                <!-- Editor de Mensagem -->
+                <div class="glass p-6 rounded-2xl border border-gray-700/50">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Personalize a Mensagem</label>
+                        <span class="text-[10px] text-gray-500 bg-gray-800 px-2 py-1 rounded border border-gray-700">Variáveis: {{nome}}, {{empresa}}</span>
+                    </div>
+                    
+                    <textarea id="message-content" required rows="5" class="w-full bg-gray-900/80 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition placeholder-gray-600 leading-relaxed"></textarea>
+                    
+                    <div id="whatsapp-hint" class="text-[10px] text-green-400 mt-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        WhatsApp: A instrução "Digite sua nota de 0 a 10" será adicionada automaticamente.
+                    </div>
+                    <div id="email-hint" class="text-[10px] text-blue-400 mt-2 hidden flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        Email: O cliente receberá botões clicáveis de 0 a 10 no email.
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 3: DESTINATÁRIOS -->
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>
+                    <h2 class="text-lg font-bold text-white">Selecione os Destinatários</h2>
+                </div>
+                
+                <div class="glass rounded-2xl border border-gray-700/50 overflow-hidden">
+                    <!-- Tabs -->
+                    <div class="flex border-b border-gray-700/50 bg-gray-800/30">
+                        <button type="button" onclick="switchTab('db')" id="tab-db" class="flex-1 py-3 text-xs font-bold uppercase tracking-wide transition tab-active">
+                            📋 Selecionar da Base
+                        </button>
+                        <button type="button" onclick="switchTab('manual')" id="tab-manual" class="flex-1 py-3 text-xs font-bold uppercase tracking-wide transition tab-inactive">
+                            ✏️ Lista Manual
+                        </button>
+                    </div>
+
+                    <!-- Aba Base -->
+                    <div id="content-db" class="p-4">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="db-search" onkeyup="filterCustomers()" placeholder="Buscar cliente..." class="flex-1 bg-gray-900/50 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500">
+                            <button type="button" onclick="selectAll()" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-white transition">
+                                Selecionar Todos
+                            </button>
+                            <div class="px-4 py-2 bg-indigo-900/30 rounded-lg border border-indigo-500/30 text-indigo-300 text-sm font-bold whitespace-nowrap">
+                                <span id="selected-count">0</span> selecionados
+                            </div>
+                        </div>
+                        
+                        <div class="max-h-[300px] overflow-y-auto custom-scrollbar bg-gray-900/30 rounded-lg border border-gray-700/50">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-800/50 sticky top-0">
+                                    <tr class="text-[10px] text-gray-500 uppercase">
+                                        <th class="p-3 w-10"></th>
+                                        <th class="p-3">Nome</th>
+                                        <th class="p-3" id="contact-header">Telefone</th>
+                                        <th class="p-3">Regional</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customer-list-body" class="text-sm divide-y divide-gray-700/50"></tbody>
+                            </table>
+                        </div>
+                        
+                        <p id="no-contact-warning" class="hidden text-yellow-400 text-xs mt-3 p-3 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+                            ⚠️ Alguns clientes não possuem <span id="contact-type-warning">telefone</span> cadastrado e não receberão a pesquisa.
+                        </p>
+                    </div>
+
+                    <!-- Aba Manual -->
+                    <div id="content-manual" class="p-4 hidden">
+                        <p class="text-xs text-gray-400 mb-3">Cole sua lista no formato: <code class="bg-gray-800 px-2 py-1 rounded">Nome, Contato</code> (um por linha)</p>
+                        <textarea id="customers-input" class="w-full h-[250px] bg-gray-900/50 border border-gray-600 rounded-xl p-4 text-white font-mono text-sm outline-none resize-none focus:border-indigo-500" placeholder="João Silva, 5511999999999&#10;Maria Santos, maria@email.com&#10;Pedro Costa, 5521988888888"></textarea>
+                        <p class="text-[10px] text-gray-500 mt-2">
+                            <span id="manual-hint-wa">Para WhatsApp: use o número com DDD (ex: 5511999999999)</span>
+                            <span id="manual-hint-email" class="hidden">Para Email: use o endereço de email completo</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 4: RESUMO E ENVIO -->
+            <div class="glass p-6 rounded-2xl border border-gray-700/50">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">4</div>
+                    <h2 class="text-lg font-bold text-white">Finalizar e Enviar</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-2">Nome da Campanha</label>
+                        <input type="text" id="campaign-name" required placeholder="Ex: Pesquisa NPS Dezembro 2024" class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-2">Resumo</label>
+                        <div class="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-400">Canal:</span>
+                                <span id="summary-channel" class="text-white font-semibold">💬 WhatsApp</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-400">Destinatários:</span>
+                                <span id="summary-count" class="text-white font-semibold">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                    <button type="submit" id="submit-btn" class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2 text-lg">
+                        <span>🚀</span>
+                        <span>Iniciar Campanha</span>
+                    </button>
+                    
+                    <button type="button" onclick="window.location.href='/dashboard'" class="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl transition">
+                        Cancelar
+                    </button>
+                </div>
+                
+                <p class="text-[10px] text-center text-gray-500 mt-4">
+                    ⚡ O envio será processado em segundo plano com delays anti-bloqueio para garantir a entrega.
+                </p>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('nps_token');
+        if (!token) window.location.href = '/login.html';
+        
+        let currentChannel = 'WHATSAPP';
+        let currentTab = 'db';
+        let currentPreset = 'PADRAO';
+        let dbCustomers = [];
+        let selectedIds = new Set();
+
+        // Presets de texto
+        const PRESETS = {
+            'PADRAO': "Olá {{nome}}! 👋\n\nComo você avalia sua experiência com a {{empresa}}?",
+            'ONBOARDING': "Olá {{nome}}! 🚀\n\nQue bom ter você conosco! Como você avalia nosso atendimento inicial na {{empresa}}?",
+            'SUPORTE': "Olá {{nome}}! 🎧\n\nRecentemente você foi atendido pela {{empresa}}. Como foi a qualidade do nosso suporte?",
+            'AMIGAVEL': "Oi {{nome}}! Tudo bem? 😃\n\nDe 0 a 10, quanto você recomenda a {{empresa}}?"
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCustomers();
+            loadPreset('PADRAO');
+            updateSummary();
+        });
+
+        // ============================================
+        // SELEÇÃO DE CANAL
+        // ============================================
+        
+        function selectChannel(channel) {
+            currentChannel = channel;
+            document.getElementById('channel').value = channel;
+            
+            // Atualiza visual dos cards
+            document.getElementById('channel-whatsapp').classList.remove('selected');
+            document.getElementById('channel-whatsapp').classList.remove('border-green-500/50');
+            document.getElementById('channel-whatsapp').classList.add('border-gray-600');
+            
+            document.getElementById('channel-email').classList.remove('selected');
+            document.getElementById('channel-email').classList.remove('border-blue-500/50');
+            document.getElementById('channel-email').classList.add('border-gray-600');
+            
+            document.getElementById('check-whatsapp').classList.add('hidden');
+            document.getElementById('check-email').classList.add('hidden');
+            
+            if (channel === 'WHATSAPP') {
+                document.getElementById('channel-whatsapp').classList.add('selected', 'border-green-500/50');
+                document.getElementById('channel-whatsapp').classList.remove('border-gray-600');
+                document.getElementById('check-whatsapp').classList.remove('hidden');
+                document.getElementById('whatsapp-hint').classList.remove('hidden');
+                document.getElementById('email-hint').classList.add('hidden');
+                document.getElementById('contact-header').innerText = 'Telefone';
+                document.getElementById('contact-type-warning').innerText = 'telefone';
+                document.getElementById('manual-hint-wa').classList.remove('hidden');
+                document.getElementById('manual-hint-email').classList.add('hidden');
+                document.getElementById('summary-channel').innerHTML = '💬 WhatsApp';
+            } else {
+                document.getElementById('channel-email').classList.add('selected', 'border-blue-500/50');
+                document.getElementById('channel-email').classList.remove('border-gray-600');
+                document.getElementById('check-email').classList.remove('hidden');
+                document.getElementById('whatsapp-hint').classList.add('hidden');
+                document.getElementById('email-hint').classList.remove('hidden');
+                document.getElementById('contact-header').innerText = 'Email';
+                document.getElementById('contact-type-warning').innerText = 'email';
+                document.getElementById('manual-hint-wa').classList.add('hidden');
+                document.getElementById('manual-hint-email').classList.remove('hidden');
+                document.getElementById('summary-channel').innerHTML = '📧 Email';
+            }
+            
+            renderList(dbCustomers);
+            updateSummary();
+        }
+
+        // ============================================
+        // PRESETS
+        // ============================================
+        
+        function loadPreset(key) {
+            currentPreset = key;
+            const text = PRESETS[key] || PRESETS['PADRAO'];
+            document.getElementById('message-content').value = text;
+            
+            // Atualiza visual dos presets
+            document.querySelectorAll('.preset-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`preset-${key}`).classList.add('selected');
+            
+            // Auto-name campaign
+            const date = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const presetName = key.charAt(0) + key.slice(1).toLowerCase();
+            document.getElementById('campaign-name').value = `NPS ${presetName} - ${date}`;
+        }
+
+        // ============================================
+        // TABS
+        // ============================================
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            const btnDb = document.getElementById('tab-db');
+            const btnMan = document.getElementById('tab-manual');
+            const divDb = document.getElementById('content-db');
+            const divMan = document.getElementById('content-manual');
+
+            if (tab === 'db') {
+                btnDb.className = btnDb.className.replace('tab-inactive', 'tab-active');
+                btnMan.className = btnMan.className.replace('tab-active', 'tab-inactive');
+                divDb.classList.remove('hidden');
+                divMan.classList.add('hidden');
+            } else {
+                btnMan.className = btnMan.className.replace('tab-inactive', 'tab-active');
+                btnDb.className = btnDb.className.replace('tab-active', 'tab-inactive');
+                divMan.classList.remove('hidden');
+                divDb.classList.add('hidden');
+            }
+        }
+
+        // ============================================
+        // CLIENTES
+        // ============================================
+        
+        async function loadCustomers() {
+            try {
+                const res = await fetch('/api/customers?limit=500', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    dbCustomers = await res.json();
+                    renderList(dbCustomers);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderList(list) {
+            const tbody = document.getElementById('customer-list-body');
+            let hasContactWarning = false;
+            
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="p-8 text-center text-gray-500">
+                            <p class="mb-2">Nenhum cliente cadastrado</p>
+                            <a href="/clients" class="text-indigo-400 hover:underline text-sm">Importar clientes</a>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = list.map(c => {
+                const contact = currentChannel === 'WHATSAPP' ? c.phone : c.email;
+                const hasContact = contact && contact.trim().length > 0;
+                
+                if (!hasContact && selectedIds.has(c.id)) {
+                    hasContactWarning = true;
+                }
+                
+                return `
+                    <tr class="hover:bg-white/5 cursor-pointer transition ${!hasContact ? 'opacity-50' : ''}" onclick="toggleSelect('${c.id}', ${hasContact})">
+                        <td class="p-3 w-10 text-center">
+                            <input type="checkbox" value="${c.id}" ${selectedIds.has(c.id) ? 'checked' : ''} ${!hasContact ? 'disabled' : ''} 
+                                onchange="toggleSelect('${c.id}', ${hasContact})" onclick="event.stopPropagation()"
+                                class="rounded bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                        </td>
+                        <td class="p-3">
+                            <div class="text-white font-medium">${c.name}</div>
+                            <div class="text-[10px] text-gray-500">${c.role || ''}</div>
+                        </td>
+                        <td class="p-3 font-mono text-gray-400 text-xs">${contact || '<span class="text-red-400">Não cadastrado</span>'}</td>
+                        <td class="p-3 text-gray-500 text-xs">${c.regional || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // Mostra aviso se necessário
+            document.getElementById('no-contact-warning').classList.toggle('hidden', !hasContactWarning);
+        }
+
+        function toggleSelect(id, hasContact = true) {
+            if (!hasContact) return;
+            
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            
+            const chk = document.querySelector(`input[value="${id}"]`);
+            if (chk) chk.checked = selectedIds.has(id);
+            
+            updateSummary();
+        }
+
+        function selectAll() {
+            const contactField = currentChannel === 'WHATSAPP' ? 'phone' : 'email';
+            dbCustomers.forEach(c => {
+                if (c[contactField] && c[contactField].trim()) {
+                    selectedIds.add(c.id);
+                }
+            });
+            renderList(dbCustomers);
+            updateSummary();
+        }
+
+        function filterCustomers() {
+            const term = document.getElementById('db-search').value.toLowerCase();
+            const contactField = currentChannel === 'WHATSAPP' ? 'phone' : 'email';
+            const filtered = dbCustomers.filter(c => 
+                c.name.toLowerCase().includes(term) || 
+                (c[contactField] && c[contactField].includes(term))
+            );
+            renderList(filtered);
+        }
+
+        function updateSummary() {
+            document.getElementById('selected-count').innerText = selectedIds.size;
+            document.getElementById('summary-count').innerText = selectedIds.size;
+        }
+
+        // ============================================
+        // ENVIO
+        // ============================================
+        
+        async function handleDispatch(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            
+            let finalCustomers = [];
+            const contactField = currentChannel === 'WHATSAPP' ? 'phone' : 'email';
+            
+            if (currentTab === 'db') {
+                if (selectedIds.size === 0) {
+                    return Swal.fire({
+                        icon: 'warning',
+                        title: 'Nenhum cliente selecionado',
+                        text: 'Selecione pelo menos um cliente para enviar a pesquisa.'
+                    });
+                }
+                finalCustomers = dbCustomers
+                    .filter(c => selectedIds.has(c.id) && c[contactField])
+                    .map(c => ({
+                        name: c.name,
+                        phone: c.phone,
+                        email: c.email,
+                        role: c.role,
+                        regional: c.regional
+                    }));
+            } else {
+                const raw = document.getElementById('customers-input').value;
+                finalCustomers = raw.split('\n').filter(l => l.trim().length > 3).map(l => {
+                    const parts = l.split(',');
+                    const name = parts[0]?.trim() || 'Cliente';
+                    const contact = parts[1]?.trim() || '';
+                    
+                    if (currentChannel === 'WHATSAPP') {
+                        return { name, phone: contact.replace(/\D/g, '') };
+                    } else {
+                        return { name, email: contact };
+                    }
+                });
+                
+                if (finalCustomers.length === 0) {
+                    return Swal.fire({
+                        icon: 'warning',
+                        title: 'Lista vazia',
+                        text: 'Adicione pelo menos um contato na lista manual.'
+                    });
+                }
+            }
+
+            const messageContent = document.getElementById('message-content').value;
+            if (!messageContent.trim()) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'Mensagem vazia',
+                    text: 'Digite uma mensagem para enviar.'
+                });
+            }
+
+            // Confirmação
+            const confirm = await Swal.fire({
+                title: 'Confirmar envio?',
+                html: `
+                    <div class="text-left">
+                        <p><strong>Canal:</strong> ${currentChannel === 'WHATSAPP' ? '💬 WhatsApp' : '📧 Email'}</p>
+                        <p><strong>Destinatários:</strong> ${finalCustomers.length}</p>
+                        <p><strong>Campanha:</strong> ${document.getElementById('campaign-name').value}</p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#4F46E5',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: '🚀 Enviar Agora',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Iniciando campanha...</span>`;
+
+            try {
+                const res = await fetch('/api/campaigns/dispatch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        name: document.getElementById('campaign-name').value,
+                        channel: currentChannel,
+                        template: currentPreset,
+                        message: messageContent,
+                        customers: finalCustomers
+                    })
+                });
+
+                if (res.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Campanha iniciada!',
+                        text: `${finalCustomers.length} pesquisas estão sendo enviadas.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    window.location.href = '/dashboard';
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Erro ao iniciar campanha');
+                }
+            } catch (err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: err.message || 'Erro de conexão. Tente novamente.'
+                });
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<span>🚀</span><span>Iniciar Campanha</span>';
+        }
+    </script>
+</body>
+</html>

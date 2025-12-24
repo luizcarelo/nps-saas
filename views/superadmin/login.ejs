@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperAdmin - NPS Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    
+    <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 flex items-center justify-center text-white font-extrabold text-3xl shadow-2xl mb-4">
+                SA
+            </div>
+            <h1 class="text-2xl font-bold text-white">Super<span class="text-orange-400">Admin</span></h1>
+            <p class="text-gray-400 text-sm mt-1">Painel de Gerenciamento da Plataforma</p>
+        </div>
+        
+        <!-- Login Form -->
+        <div class="glass rounded-2xl border border-gray-700/50 p-8">
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input type="email" id="email" required 
+                        class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 outline-none transition"
+                        placeholder="superadmin@email.com">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Senha</label>
+                    <input type="password" id="password" required 
+                        class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 outline-none transition"
+                        placeholder="••••••••">
+                </div>
+                
+                <div id="error" class="hidden mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm"></div>
+                
+                <button type="submit" id="submitBtn"
+                    class="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <span>Entrar</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Footer -->
+        <p class="text-center text-gray-500 text-xs mt-6">
+            NPS Manager v5 • Acesso restrito a administradores
+        </p>
+    </div>
+
+    <script>
+        // Verifica se já está logado
+        const token = localStorage.getItem('superadmin_token');
+        if (token) {
+            window.location.href = '/superadmin/dashboard';
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            const btn = document.getElementById('submitBtn');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>';
+            errorDiv.classList.add('hidden');
+            
+            try {
+                const res = await fetch('/api/superadmin/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    localStorage.setItem('superadmin_token', data.token);
+                    localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+                    window.location.href = '/superadmin/dashboard';
+                } else {
+                    errorDiv.textContent = data.error || 'Credenciais inválidas';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Erro de conexão';
+                errorDiv.classList.remove('hidden');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<span>Entrar</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
+        }
+    </script>
+</body>
+</html>

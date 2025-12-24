@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - SuperAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.5); border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-100">
+    
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 glass border-b border-gray-700/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 flex items-center justify-center text-white font-extrabold text-lg shadow-lg">
+                        SA
+                    </div>
+                    <div>
+                        <span class="text-lg font-bold text-white">Super<span class="text-orange-400">Admin</span></span>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Gerenciamento</p>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-1 bg-gray-900/50 p-1.5 rounded-xl border border-gray-700/50">
+                    <a href="/superadmin/dashboard" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50">Dashboard</a>
+                    <a href="/superadmin/tenants" class="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600/20 text-orange-400 border border-orange-500/30">Clientes</a>
+                    <a href="/superadmin/plans" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50">Planos</a>
+                    <a href="/superadmin/reports" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50">Relatórios</a>
+                </div>
+                
+                <button onclick="logout()" class="p-2 hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-400 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Clientes</h1>
+                <p class="text-gray-400">Gerenciar empresas cadastradas na plataforma</p>
+            </div>
+            <button onclick="openNewTenantModal()" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium rounded-xl transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Novo Cliente
+            </button>
+        </div>
+        
+        <!-- Filters -->
+        <div class="glass rounded-xl border border-gray-700/50 p-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <input type="text" id="search" onkeyup="filterTenants()" placeholder="Buscar por nome, email ou slug..." class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-orange-500 outline-none">
+                </div>
+                <select id="filterPlan" onchange="filterTenants()" class="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-orange-500 outline-none">
+                    <option value="">Todos os planos</option>
+                </select>
+                <select id="filterStatus" onchange="filterTenants()" class="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-orange-500 outline-none">
+                    <option value="">Todos os status</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                    <option value="trial">Em Trial</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Tenants Table -->
+        <div class="glass rounded-2xl border border-gray-700/50 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800/50">
+                        <tr>
+                            <th class="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
+                            <th class="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Plano</th>
+                            <th class="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                            <th class="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Uso</th>
+                            <th class="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Criado em</th>
+                            <th class="text-right px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenants-table" class="divide-y divide-gray-700/50">
+                        <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div id="pagination" class="flex justify-between items-center mt-4 text-sm text-gray-400">
+            <span id="pagination-info"></span>
+            <div class="flex gap-2">
+                <button onclick="prevPage()" id="btn-prev" class="px-4 py-2 bg-gray-800 rounded-lg disabled:opacity-50" disabled>Anterior</button>
+                <button onclick="nextPage()" id="btn-next" class="px-4 py-2 bg-gray-800 rounded-lg disabled:opacity-50" disabled>Próximo</button>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal Novo/Editar Cliente -->
+    <div id="tenant-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800">
+                <h3 id="modal-title" class="text-lg font-bold text-white">Novo Cliente</h3>
+                <button onclick="closeModal()" class="p-2 hover:bg-gray-700 rounded-lg">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="tenant-form" onsubmit="saveTenant(event)" class="p-6 space-y-6">
+                <input type="hidden" id="tenant-id">
+                
+                <!-- Dados Básicos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nome da Empresa *</label>
+                        <input type="text" id="tenant-name" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Slug *</label>
+                        <input type="text" id="tenant-slug" required pattern="[a-z0-9-]+" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none font-mono" placeholder="empresa-exemplo">
+                    </div>
+                </div>
+                
+                <!-- Contato -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nome do Responsável</label>
+                        <input type="text" id="tenant-owner-name" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email *</label>
+                        <input type="email" id="tenant-owner-email" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Telefone</label>
+                        <input type="text" id="tenant-owner-phone" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                </div>
+                
+                <!-- Plano e Status -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Plano</label>
+                        <select id="tenant-plan" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                        <select id="tenant-status" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                            <option value="active">Ativo</option>
+                            <option value="trial">Trial</option>
+                            <option value="inactive">Inativo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Trial até</label>
+                        <input type="date" id="tenant-trial-ends" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                </div>
+                
+                <!-- Dados Fiscais -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">CNPJ/CPF</label>
+                        <input type="text" id="tenant-document" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Cidade/Estado</label>
+                        <input type="text" id="tenant-city" placeholder="São Paulo - SP" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                    </div>
+                </div>
+                
+                <!-- Credenciais do Admin -->
+                <div id="admin-credentials" class="border-t border-gray-700 pt-6">
+                    <h4 class="text-sm font-bold text-orange-400 uppercase mb-4">Credenciais do Administrador</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Email do Admin *</label>
+                            <input type="email" id="admin-email" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Senha <span id="password-hint" class="text-gray-500">(deixe vazio para gerar)</span></label>
+                            <input type="text" id="admin-password" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-orange-500 outline-none font-mono">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="form-error" class="hidden p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm"></div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium">Cancelar</button>
+                    <button type="submit" id="submit-btn" class="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-medium">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Detalhes -->
+    <div id="details-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800">
+                <h3 id="details-title" class="text-lg font-bold text-white">Detalhes do Cliente</h3>
+                <button onclick="closeDetailsModal()" class="p-2 hover:bg-gray-700 rounded-lg">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="details-content" class="p-6">
+                <!-- Conteúdo carregado dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('superadmin_token');
+        if (!token) window.location.href = '/superadmin';
+        
+        let tenants = [];
+        let plans = [];
+        let currentPage = 1;
+        const perPage = 10;
+        
+        function logout() {
+            localStorage.removeItem('superadmin_token');
+            localStorage.removeItem('superadmin_user');
+            window.location.href = '/superadmin';
+        }
+        
+        async function loadPlans() {
+            try {
+                const res = await fetch('/api/superadmin/plans', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                plans = await res.json();
+                
+                const filterSelect = document.getElementById('filterPlan');
+                const formSelect = document.getElementById('tenant-plan');
+                
+                plans.forEach(p => {
+                    filterSelect.innerHTML += `<option value="${p.id}">${p.displayName}</option>`;
+                    formSelect.innerHTML += `<option value="${p.id}">${p.displayName} - R$ ${p.priceMonthly}/mês</option>`;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        async function loadTenants() {
+            try {
+                const res = await fetch('/api/superadmin/tenants', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                tenants = await res.json();
+                renderTenants();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        function filterTenants() {
+            currentPage = 1;
+            renderTenants();
+        }
+        
+        function renderTenants() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const planFilter = document.getElementById('filterPlan').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+            
+            let filtered = tenants.filter(t => {
+                const matchSearch = !search || 
+                    t.name.toLowerCase().includes(search) || 
+                    t.slug.toLowerCase().includes(search) ||
+                    (t.ownerEmail && t.ownerEmail.toLowerCase().includes(search));
+                
+                const matchPlan = !planFilter || t.planId === planFilter;
+                
+                let matchStatus = true;
+                if (statusFilter === 'active') matchStatus = t.isActive && !t.isTrial;
+                if (statusFilter === 'inactive') matchStatus = !t.isActive;
+                if (statusFilter === 'trial') matchStatus = t.isTrial;
+                
+                return matchSearch && matchPlan && matchStatus;
+            });
+            
+            const start = (currentPage - 1) * perPage;
+            const paginated = filtered.slice(start, start + perPage);
+            
+            const tbody = document.getElementById('tenants-table');
+            
+            if (paginated.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Nenhum cliente encontrado</td></tr>';
+            } else {
+                tbody.innerHTML = paginated.map(t => `
+                    <tr class="hover:bg-gray-800/30">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                                    ${t.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-white">${t.name}</p>
+                                    <p class="text-xs text-gray-500">${t.ownerEmail || t.slug}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full bg-purple-900/50 text-purple-400">
+                                ${t.plan?.displayName || 'FREE'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${t.isTrial ? 
+                                '<span class="px-2 py-1 text-xs rounded-full bg-yellow-900/50 text-yellow-400">Trial</span>' :
+                                (t.isActive ? 
+                                    '<span class="px-2 py-1 text-xs rounded-full bg-green-900/50 text-green-400">Ativo</span>' :
+                                    '<span class="px-2 py-1 text-xs rounded-full bg-red-900/50 text-red-400">Inativo</span>'
+                                )
+                            }
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-400">
+                            <p>${t._count?.users || 0} usuários</p>
+                            <p>${t._count?.customers || 0} clientes</p>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-400">
+                            ${new Date(t.createdAt).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <button onclick="viewTenant('${t.id}')" class="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white" title="Ver detalhes">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                </button>
+                                <button onclick="editTenant('${t.id}')" class="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-blue-400" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button onclick="toggleTenantStatus('${t.id}', ${t.isActive})" class="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-${t.isActive ? 'red' : 'green'}-400" title="${t.isActive ? 'Desativar' : 'Ativar'}">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${t.isActive ? 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'}"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            
+            // Pagination info
+            document.getElementById('pagination-info').textContent = `Mostrando ${start + 1}-${Math.min(start + perPage, filtered.length)} de ${filtered.length}`;
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = start + perPage >= filtered.length;
+        }
+        
+        function prevPage() { currentPage--; renderTenants(); }
+        function nextPage() { currentPage++; renderTenants(); }
+        
+        function openNewTenantModal() {
+            document.getElementById('modal-title').textContent = 'Novo Cliente';
+            document.getElementById('tenant-form').reset();
+            document.getElementById('tenant-id').value = '';
+            document.getElementById('admin-credentials').classList.remove('hidden');
+            document.getElementById('admin-email').required = true;
+            document.getElementById('password-hint').textContent = '(deixe vazio para gerar)';
+            document.getElementById('tenant-modal').classList.remove('hidden');
+        }
+        
+        async function editTenant(id) {
+            const tenant = tenants.find(t => t.id === id);
+            if (!tenant) return;
+            
+            document.getElementById('modal-title').textContent = 'Editar Cliente';
+            document.getElementById('tenant-id').value = tenant.id;
+            document.getElementById('tenant-name').value = tenant.name;
+            document.getElementById('tenant-slug').value = tenant.slug;
+            document.getElementById('tenant-owner-name').value = tenant.ownerName || '';
+            document.getElementById('tenant-owner-email').value = tenant.ownerEmail || '';
+            document.getElementById('tenant-owner-phone').value = tenant.ownerPhone || '';
+            document.getElementById('tenant-plan').value = tenant.planId || '';
+            document.getElementById('tenant-status').value = tenant.isTrial ? 'trial' : (tenant.isActive ? 'active' : 'inactive');
+            document.getElementById('tenant-trial-ends').value = tenant.trialEndsAt ? tenant.trialEndsAt.split('T')[0] : '';
+            document.getElementById('tenant-document').value = tenant.document || '';
+            document.getElementById('tenant-city').value = tenant.city ? `${tenant.city} - ${tenant.state || ''}` : '';
+            
+            document.getElementById('admin-credentials').classList.add('hidden');
+            document.getElementById('admin-email').required = false;
+            
+            document.getElementById('tenant-modal').classList.remove('hidden');
+        }
+        
+        async function saveTenant(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('tenant-id').value;
+            const isNew = !id;
+            
+            const status = document.getElementById('tenant-status').value;
+            const cityState = document.getElementById('tenant-city').value.split(' - ');
+            
+            const data = {
+                name: document.getElementById('tenant-name').value,
+                slug: document.getElementById('tenant-slug').value.toLowerCase(),
+                ownerName: document.getElementById('tenant-owner-name').value,
+                ownerEmail: document.getElementById('tenant-owner-email').value,
+                ownerPhone: document.getElementById('tenant-owner-phone').value,
+                planId: document.getElementById('tenant-plan').value || null,
+                isActive: status === 'active' || status === 'trial',
+                isTrial: status === 'trial',
+                trialEndsAt: document.getElementById('tenant-trial-ends').value || null,
+                document: document.getElementById('tenant-document').value,
+                city: cityState[0] || null,
+                state: cityState[1] || null
+            };
+            
+            if (isNew) {
+                data.adminEmail = document.getElementById('admin-email').value;
+                data.adminPassword = document.getElementById('admin-password').value;
+            }
+            
+            try {
+                const res = await fetch(`/api/superadmin/tenants${id ? `/${id}` : ''}`, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await res.json();
+                
+                if (res.ok) {
+                    closeModal();
+                    loadTenants();
+                    
+                    if (isNew && result.adminPassword) {
+                        alert(`Cliente criado com sucesso!\n\nCredenciais do Admin:\nEmail: ${result.adminEmail}\nSenha: ${result.adminPassword}`);
+                    }
+                } else {
+                    document.getElementById('form-error').textContent = result.error || 'Erro ao salvar';
+                    document.getElementById('form-error').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('form-error').textContent = 'Erro de conexão';
+                document.getElementById('form-error').classList.remove('hidden');
+            }
+        }
+        
+        async function toggleTenantStatus(id, currentStatus) {
+            if (!confirm(`Tem certeza que deseja ${currentStatus ? 'desativar' : 'ativar'} este cliente?`)) return;
+            
+            try {
+                await fetch(`/api/superadmin/tenants/${id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify({ isActive: !currentStatus })
+                });
+                loadTenants();
+            } catch (e) {
+                alert('Erro ao atualizar status');
+            }
+        }
+        
+        async function viewTenant(id) {
+            const tenant = tenants.find(t => t.id === id);
+            if (!tenant) return;
+            
+            try {
+                const res = await fetch(`/api/superadmin/tenants/${id}/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const stats = await res.json();
+                
+                document.getElementById('details-title').textContent = tenant.name;
+                document.getElementById('details-content').innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Info -->
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-orange-400">Informações</h4>
+                            <div class="glass rounded-xl border border-gray-700/50 p-4 space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Slug:</span>
+                                    <span class="text-white font-mono">${tenant.slug}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Plano:</span>
+                                    <span class="text-white">${tenant.plan?.displayName || 'FREE'}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Status:</span>
+                                    <span class="${tenant.isActive ? 'text-green-400' : 'text-red-400'}">${tenant.isActive ? 'Ativo' : 'Inativo'}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Criado em:</span>
+                                    <span class="text-white">${new Date(tenant.createdAt).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                            </div>
+                            
+                            <h4 class="font-bold text-orange-400">Contato</h4>
+                            <div class="glass rounded-xl border border-gray-700/50 p-4 space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Responsável:</span>
+                                    <span class="text-white">${tenant.ownerName || '-'}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Email:</span>
+                                    <span class="text-white">${tenant.ownerEmail || '-'}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Telefone:</span>
+                                    <span class="text-white">${tenant.ownerPhone || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats -->
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-orange-400">Estatísticas</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="glass rounded-xl border border-gray-700/50 p-4 text-center">
+                                    <p class="text-2xl font-bold text-white">${stats.users || 0}</p>
+                                    <p class="text-xs text-gray-400">Usuários</p>
+                                </div>
+                                <div class="glass rounded-xl border border-gray-700/50 p-4 text-center">
+                                    <p class="text-2xl font-bold text-white">${stats.customers || 0}</p>
+                                    <p class="text-xs text-gray-400">Clientes</p>
+                                </div>
+                                <div class="glass rounded-xl border border-gray-700/50 p-4 text-center">
+                                    <p class="text-2xl font-bold text-white">${stats.campaigns || 0}</p>
+                                    <p class="text-xs text-gray-400">Campanhas</p>
+                                </div>
+                                <div class="glass rounded-xl border border-gray-700/50 p-4 text-center">
+                                    <p class="text-2xl font-bold text-white">${stats.responses || 0}</p>
+                                    <p class="text-xs text-gray-400">Respostas NPS</p>
+                                </div>
+                            </div>
+                            
+                            <h4 class="font-bold text-orange-400">NPS Geral</h4>
+                            <div class="glass rounded-xl border border-gray-700/50 p-6 text-center">
+                                <p class="text-4xl font-bold ${stats.nps >= 50 ? 'text-green-400' : stats.nps >= 0 ? 'text-yellow-400' : 'text-red-400'}">${stats.nps !== null ? stats.nps : '-'}</p>
+                                <p class="text-xs text-gray-400 mt-1">Net Promoter Score</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex gap-3">
+                        <button onclick="editTenant('${tenant.id}'); closeDetailsModal();" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium">Editar Cliente</button>
+                        <button onclick="loginAsTenant('${tenant.id}')" class="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium">Acessar como Admin</button>
+                    </div>
+                `;
+                
+                document.getElementById('details-modal').classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        async function loginAsTenant(id) {
+            try {
+                const res = await fetch(`/api/superadmin/tenants/${id}/impersonate`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // Salva token do tenant
+                    localStorage.setItem('nps_token', data.token);
+                    localStorage.setItem('nps_user', JSON.stringify(data.user));
+                    window.open('/dashboard', '_blank');
+                } else {
+                    alert(data.error || 'Erro ao acessar');
+                }
+            } catch (e) {
+                alert('Erro de conexão');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('tenant-modal').classList.add('hidden');
+            document.getElementById('form-error').classList.add('hidden');
+        }
+        
+        function closeDetailsModal() {
+            document.getElementById('details-modal').classList.add('hidden');
+        }
+        
+        // Auto-generate slug
+        document.getElementById('tenant-name').addEventListener('input', function() {
+            if (!document.getElementById('tenant-id').value) {
+                const slug = this.value.toLowerCase()
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '');
+                document.getElementById('tenant-slug').value = slug;
+            }
+        });
+        
+        // Init
+        loadPlans();
+        loadTenants();
+    </script>
+</body>
+</html>

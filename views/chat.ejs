@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <%- include('partials/head', { title: 'Chat ao Vivo', branding: settings }) %>
+    <style>
+        .chat-container { height: calc(100vh - 160px); min-height: 500px; }
+        .conversation-item { transition: all 0.2s ease; }
+        .conversation-item:hover { background: rgba(255,255,255,0.05); }
+        .conversation-item.active { background: rgba(99, 102, 241, 0.15); border-left: 3px solid #6366f1; }
+        .message-bubble { max-width: 80%; word-wrap: break-word; }
+        .message-incoming { background: #374151; border-radius: 18px 18px 18px 4px; }
+        .message-outgoing { background: linear-gradient(135deg, #4F46E5, #6366f1); border-radius: 18px 18px 4px 18px; }
+        .message-system { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.5); border-radius: 10px; }
+        .unread-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .online-indicator { animation: online-pulse 2s infinite; }
+        @keyframes online-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 50% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); } }
+        .date-divider { display: flex; align-items: center; text-align: center; color: #6b7280; font-size: 11px; margin: 16px 0; }
+        .date-divider::before, .date-divider::after { content: ''; flex: 1; border-bottom: 1px solid #374151; }
+        .date-divider::before { margin-right: 12px; }
+        .date-divider::after { margin-left: 12px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <%- include('partials/navbar', { page: 'chat', user: user }) %>
+    
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-3">💬 Chat ao Vivo</h1>
+                <p class="text-gray-400 text-sm mt-1">Histórico completo de conversas com clientes</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="wa-status" class="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-xl border border-gray-700">
+                    <div id="wa-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+                    <span id="wa-status-text" class="text-sm text-gray-400">Verificando...</span>
+                </div>
+                <button onclick="openNewChat()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Nova Conversa
+                </button>
+            </div>
+        </div>
+        
+        <!-- Chat Container -->
+        <div class="chat-container grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Lista de Conversas -->
+            <div class="glass rounded-2xl border border-gray-700/50 overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-gray-700/50">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="search-conversations" onkeyup="filterConversations()" placeholder="Buscar..." class="w-full bg-gray-800/50 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div id="conversations-list" class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="p-8 text-center text-gray-500">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-800 flex items-center justify-center">
+                            <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </div>
+                        <p class="text-sm">Carregando...</p>
+                    </div>
+                </div>
+                <div class="p-3 border-t border-gray-700/50 bg-gray-800/30 text-xs text-gray-500 flex justify-between">
+                    <span><span id="total-conversations">0</span> conversas</span>
+                    <span><span id="unread-count">0</span> não lidas</span>
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="lg:col-span-2 glass rounded-2xl border border-gray-700/50 overflow-hidden flex flex-col">
+                <!-- Chat Header -->
+                <div id="chat-header" class="p-4 border-b border-gray-700/50 bg-gray-800/30 hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div id="chat-avatar" class="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">?</div>
+                            <div>
+                                <h3 id="chat-name" class="font-bold text-white">Cliente</h3>
+                                <p id="chat-phone" class="text-xs text-gray-400 font-mono"></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div id="chat-nps-badge" class="hidden px-3 py-1 rounded-full text-xs font-bold">NPS: <span id="chat-nps-score">-</span></div>
+                            <button onclick="viewCustomerDetails()" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Ver detalhes">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            </button>
+                            <button onclick="refreshMessages()" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Atualizar">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="chat-empty" class="flex-1 flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
+                            <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-400 mb-2">Selecione uma conversa</h3>
+                        <p class="text-sm text-gray-500">Escolha um cliente na lista</p>
+                    </div>
+                </div>
+                
+                <!-- Messages Container -->
+                <div id="chat-messages" class="hidden flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3"></div>
+                
+                <!-- Message Input -->
+                <div id="chat-input-container" class="hidden p-4 border-t border-gray-700/50 bg-gray-800/30">
+                    <div class="flex items-end gap-3">
+                        <button onclick="toggleTemplates()" class="p-2.5 hover:bg-gray-700 rounded-xl transition text-gray-400 hover:text-white border border-gray-700" title="Templates">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        </button>
+                        <div class="flex-1 relative">
+                            <textarea id="message-input" rows="1" placeholder="Digite sua mensagem..." class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-indigo-500 outline-none resize-none" onkeydown="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
+                        </div>
+                        <button onclick="sendMessage()" id="send-btn" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition disabled:opacity-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        </button>
+                    </div>
+                    <div id="templates-dropdown" class="hidden mt-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
+                        <p class="text-xs text-gray-500 uppercase font-bold mb-2">Respostas Rápidas</p>
+                        <div class="space-y-1">
+                            <button onclick="useTemplate('Olá! Como posso ajudar você hoje?')" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-lg">👋 Saudação</button>
+                            <button onclick="useTemplate('Agradecemos seu feedback! Nossa equipe está analisando.')" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-lg">✅ Agradecimento</button>
+                            <button onclick="useTemplate('Entendemos sua preocupação. Vamos resolver isso para você.')" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-lg">🙏 Desculpas</button>
+                            <button onclick="useTemplate('Ficamos felizes com sua avaliação positiva! 😊')" class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-lg">🎉 Promotor</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal Nova Conversa -->
+    <div id="new-chat-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md">
+            <div class="p-6 border-b border-gray-700">
+                <h3 class="text-lg font-bold text-white">Nova Conversa</h3>
+            </div>
+            <div class="p-6">
+                <input type="text" id="new-chat-search" onkeyup="searchCustomers()" placeholder="Buscar cliente..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white mb-4 focus:border-indigo-500 outline-none">
+                <div id="customer-results" class="max-h-[200px] overflow-y-auto custom-scrollbar space-y-2 mb-4">
+                    <p class="text-sm text-gray-500 text-center py-4">Digite para buscar</p>
+                </div>
+                <div class="border-t border-gray-700 pt-4">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-3">Ou digite manualmente</p>
+                    <input type="text" id="new-chat-name" placeholder="Nome" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white mb-2 focus:border-indigo-500 outline-none">
+                    <input type="text" id="new-chat-phone" placeholder="5511999999999" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono focus:border-indigo-500 outline-none">
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-700 flex gap-3">
+                <button onclick="closeNewChat()" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium">Cancelar</button>
+                <button onclick="startNewChat()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium">Iniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Details Drawer -->
+    <div id="customer-drawer" class="hidden fixed inset-0 z-50">
+        <div class="absolute inset-0 bg-black/50" onclick="closeCustomerDrawer()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-gray-800 border-l border-gray-700 overflow-y-auto">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800">
+                <h3 class="text-lg font-bold text-white">Detalhes do Cliente</h3>
+                <button onclick="closeCustomerDrawer()" class="p-2 hover:bg-gray-700 rounded-lg">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="customer-drawer-content" class="p-6"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const token = localStorage.getItem('nps_token');
+        if (!token) window.location.href = '/login.html';
+        
+        let socket = null;
+        let currentConversation = null;
+        let conversations = [];
+        let allCustomers = [];
+        
+        // ============================================
+        // INICIALIZAÇÃO
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            loadConversations();
+            loadCustomers();
+            checkWhatsAppStatus();
+            
+            // Auto-refresh
+            setInterval(() => {
+                loadConversations(true);
+                if (currentConversation) loadMessages(currentConversation.id, true);
+            }, 5000);
+        });
+        
+        function initSocket() {
+            socket = io({ auth: { token } });
+            
+            socket.on('connect', () => console.log('🔌 Socket conectado'));
+            
+            socket.on('chat:message', (data) => {
+                console.log('📩 Nova mensagem:', data);
+                loadConversations(true);
+                if (currentConversation && (data.conversationId === currentConversation.id || data.customerId === currentConversation.id)) {
+                    loadMessages(currentConversation.id, true);
+                }
+                playNotificationSound();
+            });
+            
+            socket.on('whatsapp:status', updateWhatsAppStatus);
+        }
+        
+        // ============================================
+        // WHATSAPP STATUS
+        // ============================================
+        
+        async function checkWhatsAppStatus() {
+            try {
+                const res = await fetch('/api/whatsapp/status', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) updateWhatsAppStatus(await res.json());
+            } catch (e) {}
+        }
+        
+        function updateWhatsAppStatus(data) {
+            const dot = document.getElementById('wa-status-dot');
+            const text = document.getElementById('wa-status-text');
+            
+            if (data.isConnected) {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500 online-indicator';
+                text.textContent = 'Conectado';
+                text.className = 'text-sm text-green-400';
+            } else {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+                text.textContent = 'Desconectado';
+                text.className = 'text-sm text-red-400';
+            }
+        }
+        
+        // ============================================
+        // CONVERSAS
+        // ============================================
+        
+        async function loadConversations(silent = false) {
+            try {
+                const res = await fetch('/api/chat/conversations', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    conversations = await res.json();
+                    renderConversations();
+                    document.getElementById('total-conversations').textContent = conversations.length;
+                    document.getElementById('unread-count').textContent = conversations.reduce((a, c) => a + (c.unreadCount || 0), 0);
+                }
+            } catch (e) { if (!silent) console.error(e); }
+        }
+        
+        function renderConversations() {
+            const container = document.getElementById('conversations-list');
+            const searchTerm = document.getElementById('search-conversations').value.toLowerCase();
+            
+            let filtered = conversations;
+            if (searchTerm) {
+                filtered = filtered.filter(c => 
+                    (c.customerName && c.customerName.toLowerCase().includes(searchTerm)) ||
+                    (c.phone && c.phone.includes(searchTerm))
+                );
+            }
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-500"><p class="text-sm">Nenhuma conversa</p><button onclick="openNewChat()" class="mt-3 text-indigo-400 text-sm">+ Nova conversa</button></div>`;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(conv => {
+                const isActive = currentConversation && currentConversation.id === conv.id;
+                const initial = conv.customerName ? conv.customerName.charAt(0).toUpperCase() : '?';
+                const lastMsg = conv.lastMessage ? (conv.lastMessage.substring(0, 35) + (conv.lastMessage.length > 35 ? '...' : '')) : 'Sem mensagens';
+                const time = conv.lastMessageAt ? formatTimeShort(conv.lastMessageAt) : '';
+                
+                let npsBadge = '';
+                if (conv.lastNpsScore !== null && conv.lastNpsScore !== undefined) {
+                    const color = conv.lastNpsScore >= 9 ? 'green' : conv.lastNpsScore >= 7 ? 'yellow' : 'red';
+                    npsBadge = `<span class="px-1.5 py-0.5 bg-${color}-900/50 text-${color}-400 text-[10px] font-bold rounded">${conv.lastNpsScore}</span>`;
+                }
+                
+                return `
+                    <div onclick="selectConversation('${conv.id}')" class="conversation-item p-4 cursor-pointer border-b border-gray-700/30 ${isActive ? 'active' : ''}">
+                        <div class="flex items-start gap-3">
+                            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">${initial}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div class="min-w-0">
+                                        <h4 class="font-semibold text-white truncate">${conv.customerName || 'Cliente'}</h4>
+                                        <p class="text-xs text-gray-500 font-mono">${formatPhoneDisplay(conv.phone)}</p>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500">${time}</span>
+                                </div>
+                                <div class="flex items-center justify-between mt-1">
+                                    <p class="text-sm text-gray-400 truncate">${escapeHtml(lastMsg)}</p>
+                                    <div class="flex items-center gap-1 ml-2">
+                                        ${npsBadge}
+                                        ${conv.unreadCount > 0 ? `<span class="unread-badge w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">${conv.unreadCount}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function filterConversations() { renderConversations(); }
+        
+        // ============================================
+        // CHAT
+        // ============================================
+        
+        async function selectConversation(id) {
+            const conv = conversations.find(c => c.id === id);
+            if (!conv) return;
+            
+            currentConversation = conv;
+            
+            document.getElementById('chat-empty').classList.add('hidden');
+            document.getElementById('chat-header').classList.remove('hidden');
+            document.getElementById('chat-messages').classList.remove('hidden');
+            document.getElementById('chat-input-container').classList.remove('hidden');
+            
+            const initial = conv.customerName ? conv.customerName.charAt(0).toUpperCase() : '?';
+            document.getElementById('chat-avatar').textContent = initial;
+            document.getElementById('chat-name').textContent = conv.customerName || 'Cliente';
+            document.getElementById('chat-phone').textContent = formatPhoneDisplay(conv.phone);
+            
+            if (conv.lastNpsScore !== null && conv.lastNpsScore !== undefined) {
+                const badge = document.getElementById('chat-nps-badge');
+                badge.classList.remove('hidden');
+                document.getElementById('chat-nps-score').textContent = conv.lastNpsScore;
+                const color = conv.lastNpsScore >= 9 ? 'green' : conv.lastNpsScore >= 7 ? 'yellow' : 'red';
+                badge.className = `px-3 py-1 rounded-full text-xs font-bold bg-${color}-900/50 text-${color}-400 border border-${color}-500/30`;
+            } else {
+                document.getElementById('chat-nps-badge').classList.add('hidden');
+            }
+            
+            await loadMessages(id);
+            renderConversations();
+            document.getElementById('message-input').focus();
+            markAsRead(id);
+        }
+        
+        async function loadMessages(conversationId, silent = false) {
+            try {
+                const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const messages = await res.json();
+                    renderMessages(messages);
+                }
+            } catch (e) { if (!silent) console.error(e); }
+        }
+        
+        function renderMessages(messages) {
+            const container = document.getElementById('chat-messages');
+            
+            if (messages.length === 0) {
+                container.innerHTML = `<div class="text-center py-8"><p class="text-gray-500 text-sm">Nenhuma mensagem. Envie a primeira!</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            let lastDate = '';
+            
+            messages.forEach(msg => {
+                const msgDate = new Date(msg.createdAt).toLocaleDateString('pt-BR');
+                if (msgDate !== lastDate) {
+                    html += `<div class="date-divider">${formatDateLabel(msg.createdAt)}</div>`;
+                    lastDate = msgDate;
+                }
+                
+                const isOutgoing = msg.direction === 'outgoing';
+                const time = formatTime(msg.createdAt);
+                const isSystem = msg.isSystem || msg.type === 'system';
+                
+                if (isSystem) {
+                    html += `
+                        <div class="flex justify-center">
+                            <div class="message-system px-4 py-2 text-center max-w-md">
+                                <p class="text-yellow-400 text-sm">${escapeHtml(msg.content)}</p>
+                                <span class="text-[10px] text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="flex ${isOutgoing ? 'justify-end' : 'justify-start'}">
+                            <div class="message-bubble ${isOutgoing ? 'message-outgoing' : 'message-incoming'} px-4 py-2.5">
+                                <p class="text-white text-sm whitespace-pre-wrap">${escapeHtml(msg.content)}</p>
+                                <div class="flex items-center justify-end gap-1 mt-1">
+                                    <span class="text-[10px] ${isOutgoing ? 'text-indigo-200' : 'text-gray-500'}">${time}</span>
+                                    ${isOutgoing ? getStatusIcon(msg.status) : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function getStatusIcon(status) {
+            if (status === 'read') return '<svg class="w-3 h-3 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/></svg>';
+            if (status === 'delivered') return '<svg class="w-3 h-3 text-indigo-200" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/></svg>';
+            return '<svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        }
+        
+        async function sendMessage() {
+            if (!currentConversation) return;
+            
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            if (!content) return;
+            
+            const btn = document.getElementById('send-btn');
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`/api/chat/conversations/${currentConversation.id}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ content })
+                });
+                
+                if (res.ok) {
+                    input.value = '';
+                    input.style.height = 'auto';
+                    await loadMessages(currentConversation.id);
+                    loadConversations(true);
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao enviar');
+                }
+            } catch (e) {
+                alert('Erro ao enviar mensagem');
+            }
+            
+            btn.disabled = false;
+        }
+        
+        function refreshMessages() {
+            if (currentConversation) loadMessages(currentConversation.id);
+        }
+        
+        async function markAsRead(conversationId) {
+            try {
+                await fetch(`/api/chat/conversations/${conversationId}/read`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (e) {}
+        }
+        
+        // ============================================
+        // NOVA CONVERSA
+        // ============================================
+        
+        async function loadCustomers() {
+            try {
+                const res = await fetch('/api/customers?limit=500', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) allCustomers = await res.json();
+            } catch (e) {}
+        }
+        
+        function openNewChat() { document.getElementById('new-chat-modal').classList.remove('hidden'); }
+        function closeNewChat() {
+            document.getElementById('new-chat-modal').classList.add('hidden');
+            document.getElementById('new-chat-search').value = '';
+            document.getElementById('new-chat-name').value = '';
+            document.getElementById('new-chat-phone').value = '';
+            document.getElementById('customer-results').innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Digite para buscar</p>';
+        }
+        
+        function searchCustomers() {
+            const term = document.getElementById('new-chat-search').value.toLowerCase();
+            const container = document.getElementById('customer-results');
+            
+            if (term.length < 2) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Digite pelo menos 2 caracteres</p>';
+                return;
+            }
+            
+            const filtered = allCustomers.filter(c => (c.name && c.name.toLowerCase().includes(term)) || (c.phone && c.phone.includes(term))).slice(0, 10);
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Nenhum cliente encontrado</p>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(c => `
+                <button onclick="selectCustomerForChat('${c.name}', '${c.phone}')" class="w-full flex items-center gap-3 p-3 hover:bg-gray-700 rounded-lg text-left">
+                    <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">${c.name.charAt(0).toUpperCase()}</div>
+                    <div><p class="text-white font-medium">${c.name}</p><p class="text-xs text-gray-400 font-mono">${c.phone || 'Sem telefone'}</p></div>
+                </button>
+            `).join('');
+        }
+        
+        function selectCustomerForChat(name, phone) {
+            document.getElementById('new-chat-name').value = name;
+            document.getElementById('new-chat-phone').value = phone;
+        }
+        
+        async function startNewChat() {
+            const name = document.getElementById('new-chat-name').value.trim();
+            const phone = document.getElementById('new-chat-phone').value.replace(/\D/g, '');
+            
+            if (!phone) return alert('Telefone é obrigatório');
+            
+            try {
+                const res = await fetch('/api/chat/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name, phone })
+                });
+                
+                if (res.ok) {
+                    const conv = await res.json();
+                    closeNewChat();
+                    await loadConversations();
+                    selectConversation(conv.id);
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao criar conversa');
+                }
+            } catch (e) { alert('Erro ao criar conversa'); }
+        }
+        
+        // ============================================
+        // CUSTOMER DETAILS
+        // ============================================
+        
+        function viewCustomerDetails() {
+            if (!currentConversation) return;
+            
+            const drawer = document.getElementById('customer-drawer');
+            drawer.classList.remove('hidden');
+            
+            document.getElementById('customer-drawer-content').innerHTML = `
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl mb-3">
+                        ${currentConversation.customerName ? currentConversation.customerName.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <h3 class="text-xl font-bold text-white">${currentConversation.customerName || 'Cliente'}</h3>
+                    <p class="text-gray-400 font-mono">${formatPhoneDisplay(currentConversation.phone)}</p>
+                </div>
+                
+                ${currentConversation.lastNpsScore !== null ? `
+                    <div class="bg-gray-900/50 rounded-xl p-4 border border-gray-700 mb-4">
+                        <p class="text-xs text-gray-500 uppercase font-bold mb-2">Última Avaliação NPS</p>
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl font-bold ${currentConversation.lastNpsScore >= 9 ? 'text-green-400' : currentConversation.lastNpsScore >= 7 ? 'text-yellow-400' : 'text-red-400'}">${currentConversation.lastNpsScore}</span>
+                            <span class="text-sm text-gray-400">${currentConversation.lastNpsScore >= 9 ? 'Promotor' : currentConversation.lastNpsScore >= 7 ? 'Neutro' : 'Detrator'}</span>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="bg-gray-900/50 rounded-xl p-4 border border-gray-700 mb-4">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-2">Histórico</p>
+                    <p class="text-sm text-gray-400">Total de mensagens: ${currentConversation.messageCount || 0}</p>
+                </div>
+                
+                <a href="/messages?phone=${currentConversation.phone}" class="block w-full text-center py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium">Ver Histórico NPS</a>
+            `;
+        }
+        
+        function closeCustomerDrawer() { document.getElementById('customer-drawer').classList.add('hidden'); }
+        
+        // ============================================
+        // HELPERS
+        // ============================================
+        
+        function toggleTemplates() { document.getElementById('templates-dropdown').classList.toggle('hidden'); }
+        
+        function useTemplate(text) {
+            document.getElementById('message-input').value = text;
+            document.getElementById('templates-dropdown').classList.add('hidden');
+            document.getElementById('message-input').focus();
+        }
+        
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+        
+        function formatTimeShort(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Agora';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}min`;
+            if (diff < 86400000) return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            if (diff < 604800000) return date.toLocaleDateString('pt-BR', { weekday: 'short' });
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+        
+        function formatTime(dateStr) {
+            return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function formatDateLabel(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date.toDateString() === today.toDateString()) return 'Hoje';
+            if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        }
+        
+        function formatPhoneDisplay(phone) {
+            if (!phone) return '';
+            const clean = phone.replace(/\D/g, '');
+            // Ignora LIDs (números muito longos)
+            if (clean.length > 15) return phone.substring(0, 15) + '...';
+            if (clean.length === 13) return `+${clean.slice(0,2)} (${clean.slice(2,4)}) ${clean.slice(4,9)}-${clean.slice(9)}`;
+            if (clean.length === 12) return `+${clean.slice(0,2)} (${clean.slice(2,4)}) ${clean.slice(4,8)}-${clean.slice(8)}`;
+            return phone;
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function playNotificationSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 800;
+                gain.gain.value = 0.1;
+                osc.start();
+                setTimeout(() => osc.stop(), 100);
+            } catch (e) {}
+        }
+    </script>
+</body>
+</html>

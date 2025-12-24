@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planos - SuperAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="min-h-screen text-gray-100">
+    
+    <nav class="sticky top-0 z-50 glass border-b border-gray-700/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 flex items-center justify-center text-white font-extrabold text-lg shadow-lg">SA</div>
+                    <span class="text-lg font-bold text-white">Super<span class="text-orange-400">Admin</span></span>
+                </div>
+                <div class="hidden md:flex items-center gap-1 bg-gray-900/50 p-1.5 rounded-xl border border-gray-700/50">
+                    <a href="/superadmin/dashboard" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white">Dashboard</a>
+                    <a href="/superadmin/tenants" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white">Clientes</a>
+                    <a href="/superadmin/plans" class="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600/20 text-orange-400 border border-orange-500/30">Planos</a>
+                </div>
+                <button onclick="logout()" class="p-2 hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Planos</h1>
+                <p class="text-gray-400">Configurar planos de assinatura</p>
+            </div>
+            <button onclick="openModal()" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white font-medium rounded-xl">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Novo Plano
+            </button>
+        </div>
+        
+        <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="col-span-full text-center py-12 text-gray-500">Carregando...</div>
+        </div>
+    </main>
+    
+    <div id="modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 id="modal-title" class="text-lg font-bold text-white">Novo Plano</h3>
+                <button onclick="closeModal()" class="p-2 hover:bg-gray-700 rounded-lg"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <form id="plan-form" onsubmit="savePlan(event)" class="p-6 space-y-4">
+                <input type="hidden" id="plan-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-gray-300 mb-1">Nome (código)</label><input type="text" id="plan-name" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white font-mono uppercase"></div>
+                    <div><label class="block text-sm text-gray-300 mb-1">Nome de exibição</label><input type="text" id="plan-display" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"></div>
+                </div>
+                <div><label class="block text-sm text-gray-300 mb-1">Descrição</label><input type="text" id="plan-desc" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-gray-300 mb-1">Preço Mensal (R$)</label><input type="number" step="0.01" id="plan-price" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"></div>
+                    <div><label class="block text-sm text-gray-300 mb-1">Preço Anual (R$)</label><input type="number" step="0.01" id="plan-price-yr" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"></div>
+                </div>
+                <h4 class="font-bold text-orange-400 pt-2">Limites</h4>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="block text-xs text-gray-400 mb-1">Usuários</label><input type="number" id="plan-users" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                    <div><label class="block text-xs text-gray-400 mb-1">Clientes</label><input type="number" id="plan-customers" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                    <div><label class="block text-xs text-gray-400 mb-1">Campanhas</label><input type="number" id="plan-campaigns" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                    <div><label class="block text-xs text-gray-400 mb-1">Emails/mês</label><input type="number" id="plan-emails" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                    <div><label class="block text-xs text-gray-400 mb-1">WhatsApp/mês</label><input type="number" id="plan-wa" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                </div>
+                <h4 class="font-bold text-orange-400 pt-2">Recursos</h4>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-wa" class="accent-orange-500"><span class="text-sm text-gray-300">WhatsApp</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-email" class="accent-orange-500"><span class="text-sm text-gray-300">Email</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-api" class="accent-orange-500"><span class="text-sm text-gray-300">API</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-reports" class="accent-orange-500"><span class="text-sm text-gray-300">Relatórios</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-ai" class="accent-orange-500"><span class="text-sm text-gray-300">IA</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-brand" class="accent-orange-500"><span class="text-sm text-gray-300">Marca</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-support" class="accent-orange-500"><span class="text-sm text-gray-300">Suporte VIP</span></label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="f-active" class="accent-orange-500" checked><span class="text-sm text-gray-300">Ativo</span></label>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="flex-1 py-2.5 bg-gray-700 text-white rounded-xl">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-medium">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('superadmin_token');
+        if (!token) window.location.href = '/superadmin';
+        let plans = [];
+        
+        function logout() { localStorage.clear(); window.location.href = '/superadmin'; }
+        
+        async function loadPlans() {
+            const res = await fetch('/api/superadmin/plans', { headers: { 'Authorization': `Bearer ${token}` }});
+            plans = await res.json();
+            const colors = ['from-green-500 to-emerald-600', 'from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-orange-500 to-red-600'];
+            document.getElementById('plans-grid').innerHTML = plans.map((p, i) => `
+                <div class="glass rounded-2xl border border-gray-700/50 overflow-hidden ${!p.isActive ? 'opacity-50' : ''}">
+                    <div class="bg-gradient-to-r ${colors[i % 4]} p-6">
+                        <h3 class="text-xl font-bold text-white">${p.displayName}</h3>
+                        <p class="text-white/80 text-sm">${p.description || ''}</p>
+                        <div class="mt-4"><span class="text-3xl font-bold text-white">R$ ${parseFloat(p.priceMonthly).toLocaleString('pt-BR')}</span><span class="text-white/80">/mês</span></div>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <div class="text-sm space-y-1">
+                            <div class="flex justify-between text-gray-400"><span>Usuários:</span><span class="text-white">${p.maxUsers >= 999 ? '∞' : p.maxUsers}</span></div>
+                            <div class="flex justify-between text-gray-400"><span>Clientes:</span><span class="text-white">${p.maxCustomers >= 999999 ? '∞' : p.maxCustomers.toLocaleString()}</span></div>
+                            <div class="flex justify-between text-gray-400"><span>WhatsApp:</span><span class="text-white">${p.hasWhatsapp ? p.maxWhatsappMonth : '❌'}</span></div>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            ${p.hasEmail ? '<span class="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-400 rounded">Email</span>' : ''}
+                            ${p.hasApi ? '<span class="px-2 py-0.5 text-xs bg-purple-900/50 text-purple-400 rounded">API</span>' : ''}
+                            ${p.hasAiAnalysis ? '<span class="px-2 py-0.5 text-xs bg-pink-900/50 text-pink-400 rounded">IA</span>' : ''}
+                        </div>
+                        <div class="flex gap-2 pt-3 border-t border-gray-700">
+                            <button onclick="editPlan('${p.id}')" class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">Editar</button>
+                            <button onclick="deletePlan('${p.id}')" class="p-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                        <p class="text-xs text-gray-500 text-center">${p._count?.tenants || 0} clientes</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function openModal() { document.getElementById('modal-title').textContent = 'Novo Plano'; document.getElementById('plan-form').reset(); document.getElementById('plan-id').value = ''; document.getElementById('f-email').checked = true; document.getElementById('f-active').checked = true; document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        
+        function editPlan(id) {
+            const p = plans.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('modal-title').textContent = 'Editar Plano';
+            document.getElementById('plan-id').value = p.id;
+            document.getElementById('plan-name').value = p.name;
+            document.getElementById('plan-display').value = p.displayName;
+            document.getElementById('plan-desc').value = p.description || '';
+            document.getElementById('plan-price').value = p.priceMonthly;
+            document.getElementById('plan-price-yr').value = p.priceYearly;
+            document.getElementById('plan-users').value = p.maxUsers;
+            document.getElementById('plan-customers').value = p.maxCustomers;
+            document.getElementById('plan-campaigns').value = p.maxCampaigns;
+            document.getElementById('plan-emails').value = p.maxEmailsMonth;
+            document.getElementById('plan-wa').value = p.maxWhatsappMonth;
+            document.getElementById('f-wa').checked = p.hasWhatsapp;
+            document.getElementById('f-email').checked = p.hasEmail;
+            document.getElementById('f-api').checked = p.hasApi;
+            document.getElementById('f-reports').checked = p.hasReports;
+            document.getElementById('f-ai').checked = p.hasAiAnalysis;
+            document.getElementById('f-brand').checked = p.hasCustomBranding;
+            document.getElementById('f-support').checked = p.hasPrioritySupport;
+            document.getElementById('f-active').checked = p.isActive;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        
+        async function savePlan(e) {
+            e.preventDefault();
+            const id = document.getElementById('plan-id').value;
+            const data = {
+                name: document.getElementById('plan-name').value.toUpperCase(),
+                displayName: document.getElementById('plan-display').value,
+                description: document.getElementById('plan-desc').value,
+                priceMonthly: parseFloat(document.getElementById('plan-price').value) || 0,
+                priceYearly: parseFloat(document.getElementById('plan-price-yr').value) || 0,
+                maxUsers: parseInt(document.getElementById('plan-users').value) || 1,
+                maxCustomers: parseInt(document.getElementById('plan-customers').value) || 100,
+                maxCampaigns: parseInt(document.getElementById('plan-campaigns').value) || 5,
+                maxEmailsMonth: parseInt(document.getElementById('plan-emails').value) || 500,
+                maxWhatsappMonth: parseInt(document.getElementById('plan-wa').value) || 0,
+                hasWhatsapp: document.getElementById('f-wa').checked,
+                hasEmail: document.getElementById('f-email').checked,
+                hasApi: document.getElementById('f-api').checked,
+                hasReports: document.getElementById('f-reports').checked,
+                hasAiAnalysis: document.getElementById('f-ai').checked,
+                hasCustomBranding: document.getElementById('f-brand').checked,
+                hasPrioritySupport: document.getElementById('f-support').checked,
+                isActive: document.getElementById('f-active').checked
+            };
+            try {
+                const res = await fetch(`/api/superadmin/plans${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+                if (res.ok) { closeModal(); loadPlans(); } else { const err = await res.json(); alert(err.error || 'Erro'); }
+            } catch (e) { alert('Erro de conexão'); }
+        }
+        
+        async function deletePlan(id) {
+            if (!confirm('Excluir plano?')) return;
+            try { await fetch(`/api/superadmin/plans/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }}); loadPlans(); } catch (e) { alert('Erro'); }
+        }
+        
+        loadPlans();
+    </script>
+</body>
+</html>
