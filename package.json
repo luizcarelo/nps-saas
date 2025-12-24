@@ -16,6 +16,7 @@
     "test:whatsapp": "node scripts/test_whatsapp.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.14.0",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "bcryptjs": "^2.4.3",

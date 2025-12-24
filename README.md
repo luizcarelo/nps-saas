@@ -1,12 +1,15 @@
-# 🚀 NPS Manager V5 - Enterprise Edition
 
-Sistema completo de gestão de NPS (Net Promoter Score) com envio via **WhatsApp** e **Email**, dashboard em tempo real e multi-tenant.
+# 🚀 NPS Manager V5 — Enterprise Edition
+
+Sistema completo de gestão de **NPS (Net Promoter Score)** com envio via **WhatsApp** e **Email**, dashboard em tempo real e arquitetura **multi-tenant**.
 
 ![Version](https://img.shields.io/badge/version-5.0.0-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
+![Node](https://img.shields.io/badge/node-%E2%89%A520.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## ✨ Funcionalidades
+---
+
+## ✨ Principais Funcionalidades
 
 ### 📊 Dashboard em Tempo Real
 - NPS Score com atualização via WebSocket
@@ -15,7 +18,7 @@ Sistema completo de gestão de NPS (Net Promoter Score) com envio via **WhatsApp
 - Alertas de detratores pendentes
 - Métricas financeiras (receita em risco)
 
-### 📱 WhatsApp Integration
+### 📱 Integração WhatsApp
 - Conexão via QR Code no painel
 - Templates de mensagem personalizáveis
 - Recebimento de respostas automático
@@ -23,21 +26,20 @@ Sistema completo de gestão de NPS (Net Promoter Score) com envio via **WhatsApp
 - Controle anti-ban (delays e pausas)
 
 ### 📧 Email Marketing
-- Suporte a múltiplos providers (Gmail, SendGrid, SES, Mailgun)
+- Suporte a múltiplos providers (Gmail, SendGrid, Amazon SES, Mailgun)
 - Templates HTML responsivos
 - Tracking de envios
-- SMTP customizado por tenant
+- SMTP customizado por **tenant**
 
 ### 👥 Gestão de Clientes
 - Importação via CSV
-- Segmentação por regional/setor
+- Segmentação por regional/setor/cargo
 - Histórico de respostas
 - Tags automáticas
 
 ### 🎯 Campanhas
-- Disparo em massa
+- Disparo em massa (WhatsApp/Email)
 - Agendamento (em breve)
-- Múltiplos canais (WhatsApp/Email)
 - Templates pré-definidos
 
 ### 💜 Wall of Love
@@ -45,8 +47,9 @@ Sistema completo de gestão de NPS (Net Promoter Score) com envio via **WhatsApp
 - White-label (cores e logo personalizáveis)
 - Compartilhamento social
 
-## 🛠️ Tecnologias
+---
 
+## 🛠️ Tecnologias
 - **Backend:** Node.js, Express, Prisma ORM
 - **Frontend:** EJS, TailwindCSS, Chart.js
 - **Database:** PostgreSQL
@@ -54,15 +57,25 @@ Sistema completo de gestão de NPS (Net Promoter Score) com envio via **WhatsApp
 - **WhatsApp:** Baileys (WhiskeySockets)
 - **Email:** Nodemailer
 
-## 📦 Instalação
+---
 
-### Pré-requisitos
-- Node.js 18+
-- PostgreSQL 14+
-- NPM ou Yarn
+## 📦 Requisitos e Compatibilidade
 
-### 1. Clone e instale dependências
+> **Node.js:** recomenda-se Node **20+** (algumas dependências exigem Node >=20).
+> **PostgreSQL:** 14+.
 
+- Engines e libs relevantes:
+  - `@whiskeysockets/baileys` ^7.0.0-rc.9 (Node >=20)
+  - `p-queue` 9.x (Node >=20)
+  - `file-type` 21.x (Node >=20)
+  - `lru-cache` 11.x (Node 20+)
+  - `@prisma/client`/`prisma` 5.14+
+
+---
+
+## 🚀 Instalação
+
+### 1) Clone e instale dependências
 ```bash
 # Clone o repositório
 git clone <seu-repo>
@@ -72,201 +85,202 @@ cd nps-manager-v5
 npm install
 ```
 
-### 2. Configure o ambiente
-
+### 2) Configure o ambiente
+Copie o arquivo de exemplo e edite suas variáveis:
 ```bash
-# Copie o arquivo de exemplo
 cp .env.example .env
-
-# Edite o arquivo .env com suas configurações
 nano .env
 ```
 
-**Configurações mínimas necessárias:**
-
+**Configurações mínimas:**
 ```env
 # Banco de Dados
-DATABASE_URL="postgresql://usuario:senha@localhost:5432/nps_db"
+DATABASE_URL="postgresql://usuario:senha@localhost:5432/nps_saas_db?schema=public"
 
 # Segurança
-JWT_SECRET="sua_chave_secreta_aqui"
+JWT_SECRET="chave_super_secreta_muito_longa"
 
 # URL do Sistema
 FRONTEND_URL="http://localhost:3000"
 ```
 
-### 3. Configure o banco de dados
+**Email (SMTP) — escolha um provider:**
+```env
+# Gmail (teste)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu.email@gmail.com
+SMTP_PASS=senha_de_app_google
+SMTP_FROM=noreply@suaempresa.com
+SMTP_FROM_NAME="NPS Manager"
 
+# SendGrid
+# SMTP_HOST=smtp.sendgrid.net
+# SMTP_PORT=587
+# SMTP_USER=apikey
+# SMTP_PASS=SUA_API_KEY
+
+# Amazon SES
+# SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+# SMTP_PORT=587
+# SMTP_USER=SUA_ACCESS_KEY
+# SMTP_PASS=SUA_SECRET_KEY
+
+# Mailgun
+# SMTP_HOST=smtp.mailgun.org
+# SMTP_PORT=587
+# SMTP_USER=postmaster@seu_dominio.mailgun.org
+# SMTP_PASS=SUA_API_KEY
+```
+
+**WhatsApp (anti-ban):**
+```env
+WA_MIN_DELAY=3000      # Delay mínimo entre mensagens (ms)
+WA_MAX_DELAY=8000      # Delay máximo entre mensagens (ms)
+WA_BATCH_SIZE=15       # Mensagens antes de pausa
+WA_BATCH_COOLDOWN=45000# Tempo de pausa (ms)
+```
+
+**Opcionais:**
+```env
+# Webhook externo (Zapier, n8n etc.)
+WEBHOOK_SECRET="sua_chave_webhook"
+# Redis (filas/cache)
+REDIS_URL="redis://localhost:6379"
+# Sentry (monitoramento de erros)
+SENTRY_DSN="sua_dsn"
+```
+
+### 3) Banco de dados (Prisma)
 ```bash
 # Gera o cliente Prisma
 npm run prisma:generate
 
-# Cria as tabelas no banco
+# Cria/atualiza as tabelas
 npm run prisma:push
+# ou: npm run prisma:migrate
 
-# (Opcional) Popula com dados de exemplo
+# (Opcional) Popular com dados de demo
 npm run seed:demo
 ```
 
-### 4. Inicie o servidor
-
+### 4) Inicie o servidor
 ```bash
-# Desenvolvimento (com hot-reload)
+# Desenvolvimento (hot-reload)
 npm run dev
 
 # Produção
 npm start
 ```
 
-### 5. Acesse o sistema
-
+### 5) Acesse o sistema
 - **URL:** http://localhost:3000
-- **Login:** admin@nps.com
+- **Login (demo):** admin@nps.com
 - **Senha:** admin123
 
-## 📧 Configuração de Email
+> **Importante:** troque/disable o usuário demo em produção.
 
-### Gmail (recomendado para testes)
+---
 
-1. Ative a verificação em 2 etapas na sua conta Google
-2. Gere uma "Senha de App" em: https://myaccount.google.com/apppasswords
-3. Configure no `.env`:
+## 🔌 API — Endpoints principais
 
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=seu.email@gmail.com
-SMTP_PASS=sua_senha_de_app
-SMTP_FROM=noreply@suaempresa.com
-```
+### Autenticação
+- `POST /api/auth/login` — Login
+- `POST /api/auth/register` — Registro (self-service)
 
-### SendGrid
+### Votação (público)
+- `GET /api/vote-quick?t={token}&s={score}` — Voto rápido via link
+- `POST /api/vote` — Voto completo com comentário
 
-```env
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASS=sua_api_key_sendgrid
-```
+### Dashboard/Analytics (autenticado)
+- `GET /api/admin/dashboard` — Estatísticas em tempo real
+- `GET /api/admin/analytics` — Analytics detalhado
 
-### Testar configuração
+### Campanhas (autenticado)
+- `GET /api/campaigns` — Lista campanhas
+- `POST /api/campaigns/dispatch` — Inicia disparo (WhatsApp/Email)
 
+### Clientes (autenticado)
+- `GET /api/customers` — Lista clientes
+- `POST /api/customers` — Cria cliente
+- `POST /api/customers/import` — Importa CSV
+- `DELETE /api/customers/:id` — Remove cliente
+
+### Configurações (autenticado)
+- `GET /api/admin/settings` — Busca configurações
+- `POST /api/admin/settings` — Salva configurações
+- `POST /api/admin/test-email` — Testa envio de email
+
+### WhatsApp (autenticado)
+- `GET /api/whatsapp/status` — Status da conexão
+- `POST /api/whatsapp/logout` — Desconecta sessão
+
+### Chat (tempo real)
+- `GET /api/chat/conversations` — Lista conversas
+- `GET /api/chat/conversations/:id/messages` — Histórico
+- `POST /api/chat/conversations/:id/messages` — Envia mensagem
+
+---
+
+## 🗃️ Banco — Modelos (Prisma)
+Principais modelos: **SuperAdmin**, **Plan**, **Subscription**, **Tenant**, **TenantSettings**, **AuditLog**, **User**, **Customer**, **Campaign**, **NPSResponse**, **MessageTemplate**, **EmailLog**, **ChatMessage**.
+
+- Suporte **multi-tenant** com `tenantId` em todas as entidades de dados
+- Logs de auditoria e de e-mail
+- Tratativas de detratores (`NPSResponse.treatmentStatus`, `treatedBy`)
+- Branding por tenant, SMTP por tenant, limites por plano
+
+---
+
+## 🧪 Scripts úteis
 ```bash
+# Limpar banco (use com cuidado)
+node scripts/clean-database.js --force
+
+# Criar SuperAdmin (interativo)
+node scripts/create-superadmin.js
+
+# Testar Email
 npm run test:email seu@email.com
-```
 
-## 📱 Configuração do WhatsApp
-
-1. Acesse o Dashboard
-2. Clique em "Conectar WhatsApp"
-3. Escaneie o QR Code com seu celular
-4. Pronto! O sistema receberá e enviará mensagens
-
-### Testar WhatsApp
-
-```bash
+# Testar WhatsApp
 npm run test:whatsapp
 ```
 
-### ⚠️ Importante
+---
 
-- Use uma conta exclusiva para o sistema
-- Evite envios em massa para números desconhecidos
-- Respeite os limites do WhatsApp para evitar banimento
-- Configurações de segurança no `.env`:
+## 🔒 Segurança
+- **NUNCA** commitar `.env` com segredos (JWT, SMTP, DB). Use variáveis de ambiente.
+- Troque imediatamente qualquer credencial de exemplo.
+- Rate limiting em rotas sensíveis; `helmet` para headers; `bcrypt` para senha.
+- JWT com expiração (24h) e rotação recomendada.
+- Use uma **conta WhatsApp exclusiva** e respeite limites para evitar banimento.
 
-```env
-WA_MIN_DELAY=3000      # Delay mínimo entre mensagens (ms)
-WA_MAX_DELAY=8000      # Delay máximo entre mensagens (ms)
-WA_BATCH_SIZE=15       # Mensagens antes de pausa
-WA_BATCH_COOLDOWN=45000 # Tempo de pausa (ms)
-```
+> **Nota:** `multer@1.x` possui vulnerabilidades conhecidas; considere atualizar para `multer@2.x`.
 
-## 📁 Estrutura do Projeto
+---
 
-```
-nps-manager-v5/
-├── prisma/
-│   └── schema.prisma      # Schema do banco de dados
-├── public/
-│   └── login.html         # Página de login
-├── scripts/
-│   ├── seed.js            # Seed básico
-│   ├── seed_demo.js       # Seed com dados de demo
-│   ├── test_email.js      # Teste de email
-│   └── test_whatsapp.js   # Teste de WhatsApp
-├── src/
-│   ├── server.js          # Servidor principal
-│   └── services/
-│       ├── emailService.js    # Serviço de email
-│       └── whatsappService.js # Serviço de WhatsApp
-├── views/
-│   ├── partials/
-│   │   ├── head.ejs       # Cabeçalho HTML
-│   │   └── navbar.ejs     # Barra de navegação
-│   ├── dashboard.ejs      # Dashboard principal
-│   ├── clients.ejs        # Gestão de clientes
-│   ├── messages.ejs       # Relatórios
-│   ├── create-campaign.ejs # Criação de campanha
-│   ├── settings.ejs       # Configurações
-│   ├── vote.ejs           # Página de votação
-│   └── wall.ejs           # Wall of Love
-├── .env.example           # Exemplo de configuração
-├── package.json           # Dependências
-└── README.md              # Este arquivo
-```
+## ☸️ Deploy (produção)
 
-## 🔌 API Endpoints
-
-### Autenticação
-- `POST /api/auth/login` - Login
-- `POST /api/auth/register` - Registro (self-service)
-
-### Votação (Público)
-- `GET /api/vote-quick?t={token}&s={score}` - Voto rápido via email
-- `POST /api/vote` - Voto completo com comentário
-
-### Dashboard (Autenticado)
-- `GET /api/admin/dashboard` - Força atualização via Socket
-- `GET /api/admin/analytics` - Estatísticas detalhadas
-
-### Campanhas (Autenticado)
-- `GET /api/campaigns` - Lista campanhas
-- `POST /api/campaigns/dispatch` - Inicia disparo
-
-### Clientes (Autenticado)
-- `GET /api/customers` - Lista clientes
-- `POST /api/customers` - Cria cliente
-- `POST /api/customers/import` - Importa CSV
-- `DELETE /api/customers/:id` - Remove cliente
-
-### Configurações (Autenticado)
-- `GET /api/admin/settings` - Busca configurações
-- `POST /api/admin/settings` - Salva configurações
-- `POST /api/admin/test-email` - Testa envio de email
-
-### WhatsApp (Autenticado)
-- `GET /api/whatsapp/status` - Status da conexão
-- `POST /api/whatsapp/logout` - Desconecta sessão
-
-## 🚀 Deploy em Produção
-
-### Docker (Recomendado)
-
+### Docker (exemplo)
 ```dockerfile
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
+
+# Instala apenas prod deps
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
+
+# Copia código e gera o client do Prisma
 COPY . .
 RUN npx prisma generate
+
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
 ### PM2
-
 ```bash
 npm install -g pm2
 pm2 start src/server.js --name nps-manager
@@ -274,28 +288,25 @@ pm2 save
 pm2 startup
 ```
 
-### Variáveis de Produção
-
+### Variáveis de produção
 ```env
 NODE_ENV=production
-JWT_SECRET=chave_muito_segura_e_longa
+JWT_SECRET="chave_muito_segura_e_longa"
 ```
 
-## 🔒 Segurança
+---
 
-- Tokens JWT com expiração de 24h
-- Rate limiting em todas as rotas API
-- Helmet.js para headers de segurança
-- Bcrypt para hash de senhas
-- Validação de inputs
-- CORS configurável
+## 🧭 Roadmap
+- Agendamento de campanhas
+- IA de análise de sentimento avançada
+- Exportações (CSV/Excel) e relatórios customizados
+- Suporte a templates de WhatsApp homologados (Cloud API)
+
+---
 
 ## 📝 Licença
-
 MIT © NPS Manager Team
 
 ## 🤝 Suporte
-
 - 📧 Email: suporte@npsmanager.com
-- 📖 Docs: https://docs.npsmanager.com
 - 🐛 Issues: https://github.com/seu-repo/issues
